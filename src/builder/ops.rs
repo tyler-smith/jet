@@ -10,7 +10,7 @@ fn stack_push_word<'ctx>(
 ) -> Result<(), BuildError> {
     let value = value.into();
     bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_push_word,
+        bctx.env.runtime_fns().stack_push_word(),
         &[bctx.registers.exec_ctx.into(), value],
         "stack_push_word",
     )?;
@@ -19,7 +19,7 @@ fn stack_push_word<'ctx>(
 
 fn stack_pop<'ctx>(bctx: &BuildCtx) -> Result<inkwell::values::IntValue<'ctx>, BuildError> {
     let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_a",
     )?;
@@ -38,13 +38,13 @@ fn stack_pop_2<'ctx>(
 > {
     // let t = bctx.env.types();
     let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_a",
     )?;
 
     let stack_pop_word_result_b = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_b",
     )?;
@@ -66,19 +66,19 @@ fn stack_pop_3<'ctx>(
 > {
     // let t = bctx.env.types();
     let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_a",
     )?;
 
     let stack_pop_word_result_b = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_b",
     )?;
 
     let stack_pop_word_result_c = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word,
+        bctx.env.runtime_fns().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_c",
     )?;
@@ -90,20 +90,20 @@ fn stack_pop_3<'ctx>(
     Ok((a, b, c))
 }
 
-pub(crate) fn keccak256(bctx: &BuildCtx) -> Result<(), BuildError> {
-    let a = stack_pop(bctx)?;
-
-    let result = bctx.builder.build_call(
-        bctx.env.runtime_fns().keccak256(),
-        &[a.into()],
-        "keccak256_result",
-    )?;
-
-    let a = unsafe { inkwell::values::IntValue::new(result.as_value_ref()) };
-    stack_push_word(bctx, a)?;
-
-    Ok(())
-}
+// pub(crate) fn keccak256(bctx: &BuildCtx) -> Result<(), BuildError> {
+//     let a = stack_pop(bctx)?;
+//
+//     let result = bctx.builder.build_call(
+//         bctx.env.runtime_fns().keccak256(),
+//         &[a.into()],
+//         "keccak256_result",
+//     )?;
+//
+//     let a = unsafe { inkwell::values::IntValue::new(result.as_value_ref()) };
+//     stack_push_word(bctx, a)?;
+//
+//     Ok(())
+// }
 
 pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
     let mut push_bytes = [0u8; 32];
@@ -121,7 +121,7 @@ pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
     let push_bytes_array_value = bctx.env.types().i8.const_array(&push_bytes_values);
 
     let build_call_result = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_push_bytes,
+        bctx.env.runtime_fns().stack_push_bytes(),
         &[
             bctx.registers.exec_ctx.into(),
             push_bytes_array_value.into(),

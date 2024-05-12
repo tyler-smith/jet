@@ -1,13 +1,24 @@
 cargo-features = ["edition2024"]
 
-[workspace]
-members = ["crates/*", "bin/*"]
-resolver = "3"
-
-[workspace.package]
+[package]
+name = "jet"
 edition = "2024"
 license = "MIT"
 authors = ["Tyler Smith"]
+version = "0.1.0"
+description = "An LLVM environment for EVM contracts."
 
-[workspace.dependencies]
+
+[lib]
+name = "jet"
+crate-type = ["lib"]
+
+[[bin]]
+name = "jetdbg"
+
+[dependencies]
+log = "0.4"
+simple_logger = "5.0.0"
 inkwell = { version = "0.4.0", features = ["llvm18-0"], git = "https://github.com/TheDan64/inkwell.git" }
+
+sha3 = "0.10.8"

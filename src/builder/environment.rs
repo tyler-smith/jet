@@ -81,10 +81,10 @@ impl<'ctx> Types<'ctx> {
 }
 
 pub(crate) struct RuntimeFns<'ctx> {
-    pub(crate) stack_push_bytes: FunctionValue<'ctx>,
-    pub(crate) stack_push_word: FunctionValue<'ctx>,
-    pub(crate) stack_pop_word: FunctionValue<'ctx>,
-    pub(crate) keccak256: FunctionValue<'ctx>,
+    stack_push_bytes: FunctionValue<'ctx>,
+    stack_push_word: FunctionValue<'ctx>,
+    stack_pop_word: FunctionValue<'ctx>,
+    keccak256: FunctionValue<'ctx>,
 }
 
 impl<'ctx> RuntimeFns<'ctx> {
@@ -101,6 +101,22 @@ impl<'ctx> RuntimeFns<'ctx> {
             keccak256,
         })
     }
+
+    pub(crate) fn stack_push_bytes(&self) -> FunctionValue<'ctx> {
+        self.stack_push_bytes
+    }
+
+    pub(crate) fn stack_push_word(&self) -> FunctionValue<'ctx> {
+        self.stack_push_word
+    }
+
+    pub(crate) fn stack_pop_word(&self) -> FunctionValue<'ctx> {
+        self.stack_pop_word
+    }
+
+    // pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
+    //     self.keccak256
+    // }
 }
 
 pub struct Env<'ctx> {

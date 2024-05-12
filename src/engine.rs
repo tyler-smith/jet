@@ -11,7 +11,7 @@ use crate::builder::environment::{Env, Mode};
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
 
-const RUNTIME_IR_FILE: &str = "runtime/libjetvm-runtime.ll";
+const RUNTIME_IR_FILE: &str = "llvm-ir/jetvm.ll";
 
 #[repr(C)]
 #[derive(Debug)]
