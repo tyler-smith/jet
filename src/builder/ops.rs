@@ -131,9 +131,7 @@ pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
     );
 
     if build_call_result.is_err() {
-        return Err(BuildError {
-            builder_error: build_call_result.err(),
-        });
+        return Err(BuildError::BuilderError(build_call_result.err().unwrap()));
     };
 
     Ok(())
