@@ -19,7 +19,7 @@ struct CLI {
     #[arg(short, long, action)]
     use_vstack: Option<bool>,
 
-    #[arg(short, long, action)]
+    #[arg(short, long)]
     emit_llvm: Option<bool>,
 
     #[arg(short, long, action)]
@@ -100,12 +100,11 @@ enum Commands {
 
 fn main() -> Result<(), Error> {
     let cli = CLI::parse();
-    println!("Args: {:?}", cli);
 
     // Configure logger
     let logger = match cli.log_level {
         Some(level) => SimpleLogger::new().with_level(level),
-        None => SimpleLogger::new().with_level(log::LevelFilter::Debug),
+        None => SimpleLogger::new().with_level(log::LevelFilter::Trace),
     };
     logger.init().unwrap();
 
