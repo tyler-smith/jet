@@ -6,17 +6,9 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
-#build = "src/build.rs"
 
 [dependencies]
-#cc = "1.0.96"
 inkwell = { version = "0.4.0", features = ["llvm18-0"], git = "https://github.com/TheDan64/inkwell.git" }
-#libc = "0.2.154"
 log = "0.4"
-pretty_env_logger = "0.4"
-jet_runtime = { path = "../../crates/jet_runtime" }
-time = "0.3.36"
-
-
-#[build-dependencies]
-#cc = "1.0"
+simple_logger = "5.0.0"
+jet = { path = "../../crates/jet" }

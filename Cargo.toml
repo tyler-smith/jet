@@ -9,8 +9,5 @@ edition = "2024"
 license = "MIT"
 authors = ["Tyler Smith"]
 
-[profile.dev]
-debug = 0
-
 [workspace.dependencies]
 inkwell = { version = "0.4.0", features = ["llvm18-0"], git = "https://github.com/TheDan64/inkwell.git" }
