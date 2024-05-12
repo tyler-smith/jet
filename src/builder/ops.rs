@@ -1,5 +1,6 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::AsValueRef;
+use log::trace;
 
 use crate::builder::contract_builder::BuildCtx;
 use crate::builder::errors::BuildError;
@@ -111,8 +112,8 @@ pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
         push_bytes[31 - i] = *byte;
     }
 
-    println!("Building push for bytes: {:?}", bytes);
-    println!("Building push: {:?}", push_bytes);
+    trace!("Building push for bytes: {:?}", bytes);
+    trace!("Building push: {:?}", push_bytes);
 
     let push_bytes_values = push_bytes
         .iter()

@@ -5,8 +5,9 @@ use inkwell::execution_engine::{ExecutionEngine, JitFunction};
 use inkwell::memory_buffer::MemoryBuffer;
 use inkwell::module::Module;
 use inkwell::OptimizationLevel;
-use log::info;
+use log::{error, info};
 
+use crate::builder::environment;
 use crate::builder::environment::{Env, Mode};
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
@@ -30,9 +31,12 @@ pub struct Engine<'ctx> {
 }
 
 impl<'ctx> Engine<'ctx> {
-    pub fn new(context: &'ctx Context) -> Result<Self, BuildError> {
+    pub fn new(
+        context: &'ctx Context,
+        build_opts: environment::Options,
+    ) -> Result<Self, BuildError> {
         let runtime_module = load_runtime_module(context).unwrap();
-        let build_env = Env::new(context, runtime_module, Mode::Debug);
+        let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);
 
         Ok(Engine { build_manager })
@@ -48,8 +52,7 @@ impl<'ctx> Engine<'ctx> {
         unsafe {
             let result = ee.get_function(name.as_str());
             if result.is_err() {
-                println!("Error looking up contract function {}", name);
-                panic!("Error looking up contract function {}", name);
+                error!("Error looking up contract function {}", name);
             }
             result.ok()
         }
@@ -80,15 +83,14 @@ impl<'ctx> Engine<'ctx> {
         // hasher.update(b"");
         // let hash = hasher.finalize();
         // println!("Hash: {:x}", hash);
-
-        println!(
-            "{}",
-            self.build_manager
-                .env()
-                .module()
-                .print_to_string()
-                .to_string()
-        );
+        // println!(
+        //     "{}",
+        //     self.build_manager
+        //         .env()
+        //         .module()
+        //         .print_to_string()
+        //         .to_string()
+        // );
 
         let ee = self
             .build_manager

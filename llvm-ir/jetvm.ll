@@ -52,7 +52,7 @@ declare void @_keccak256(i8*, i8*) nounwind
 ; }
 
 
-define i256 @_call_keccak256(i256 %input){
+define i256 @_call_keccak256([32 x i8]* %input){
 entry:
   %result = alloca [32 x i8]
 

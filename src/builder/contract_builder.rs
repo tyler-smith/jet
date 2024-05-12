@@ -1,5 +1,6 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, IntValue};
+use log::{info, trace};
 
 use crate::builder::environment::Env;
 use crate::builder::errors::BuildError;
@@ -159,7 +160,7 @@ impl<'ctx> ContractBuilder {
         // Declare the function in the module
         let func_type = env.types().contract_fn;
         let func = env.module().add_function(&name, func_type, None);
-        println!(
+        info!(
             "Created function {} in module {}",
             name,
             env.module().get_name().to_str().unwrap()
@@ -229,7 +230,7 @@ impl<'ctx> ContractBuilder {
             current_block.rom = &bytecode[current_pc..];
         }
 
-        println!("Found {} code blocks", blocks.len());
+        trace!("Found {} code blocks", blocks.len());
         return blocks;
     }
 

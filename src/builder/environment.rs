@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use inkwell::AddressSpace;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -5,10 +7,58 @@ use inkwell::values::FunctionValue;
 
 use crate::runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, Clone, Debug, Default)]
+pub struct Options {
+    mode: Mode,
+    vstack: bool,
+    emit_llvm: bool,
+    assert: bool,
+}
+
+impl Options {
+    pub fn new(mode: Mode, vstack: bool, emit_llvm: bool, assert: bool) -> Self {
+        Self {
+            mode,
+            vstack,
+            emit_llvm,
+            assert,
+        }
+    }
+
+    pub fn mode(&self) -> Mode {
+        self.mode.clone()
+    }
+
+    pub fn vstack(&self) -> bool {
+        self.vstack
+    }
+
+    pub fn emit_llvm(&self) -> bool {
+        self.emit_llvm
+    }
+
+    pub fn assert(&self) -> bool {
+        self.assert
+    }
+}
+
+#[derive(clap::ValueEnum, serde::Serialize, Clone, Debug, Default, PartialEq, Eq)]
 pub enum Mode {
-    Release = 0,
-    Debug = 1,
+    #[default]
+    Debug = 0,
+    Release = 1,
+}
+
+impl FromStr for Mode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "release" => Ok(Self::Release),
+            "debug" => Ok(Self::Debug),
+            _ => Err(()),
+        }
+    }
 }
 
 pub struct Types<'ctx> {
@@ -120,20 +170,17 @@ impl<'ctx> RuntimeFns<'ctx> {
 }
 
 pub struct Env<'ctx> {
-    mode: Mode,
+    opts: Options,
 
     context: &'ctx Context,
     module: Module<'ctx>,
 
     types: Types<'ctx>,
     runtime_fns: RuntimeFns<'ctx>,
-    // constants: Constants,
-    // gep: GEPElements,
-    // gep_array_paths: [GEPPath; 1024], // Assuming architecture::StackWordCount is 1024
 }
 
 impl<'ctx> Env<'ctx> {
-    pub fn new(context: &'ctx Context, module: Module<'ctx>, mode: Mode) -> Self {
+    pub fn new(context: &'ctx Context, module: Module<'ctx>, opts: Options) -> Self {
         let types = Types::new(context);
         let runtime_fns = RuntimeFns::new(&module);
 
@@ -142,7 +189,7 @@ impl<'ctx> Env<'ctx> {
         }
 
         Self {
-            mode,
+            opts,
 
             context,
             module,
@@ -160,8 +207,8 @@ impl<'ctx> Env<'ctx> {
         &self.module
     }
 
-    pub fn mode(&self) -> Mode {
-        self.mode.clone()
+    pub fn opts(&self) -> &Options {
+        &self.opts
     }
 
     pub(crate) fn types(&self) -> &Types<'ctx> {
