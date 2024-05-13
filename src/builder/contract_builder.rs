@@ -1,6 +1,6 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, IntValue};
-use log::{info, trace};
+use log::{error, info, trace};
 
 use crate::builder::environment::Env;
 use crate::builder::errors::BuildError;
@@ -74,6 +74,7 @@ impl<'ctx, 'b> BuildCtx<'ctx, 'b> {
     }
 }
 
+#[derive(Debug)]
 struct CodeBlock<'ctx, 'b> {
     offset: usize,
     rom: &'b [u8],
@@ -136,6 +137,10 @@ impl<'ctx, 'b> CodeBlocks<'ctx, 'b> {
     pub(crate) fn iter(&self) -> std::slice::Iter<CodeBlock<'ctx, 'b>> {
         self.blocks.iter()
     }
+
+    pub(crate) fn has_jumpdest(&self) -> bool {
+        self.blocks.iter().any(|b| b.is_jumpdest)
+    }
 }
 
 pub(crate) struct ContractBuilder {
@@ -172,7 +177,7 @@ impl<'ctx> ContractBuilder {
 
         // Build ROM into IR
         let bctx = BuildCtx::new(env, &builder, func);
-        let code_blocks = Self::build_code_blocks(env, func, rom);
+        let code_blocks = Self::find_code_blocks(env, func, rom);
         Self::build_contract_body(&bctx, &code_blocks)?;
 
         // Connect the preamble block to the entry block
@@ -183,7 +188,7 @@ impl<'ctx> ContractBuilder {
         Ok(())
     }
 
-    fn build_code_blocks<'b>(
+    fn find_code_blocks<'b>(
         env: &Env<'ctx>,
         func: FunctionValue<'ctx>,
         bytecode: &'b [u8],
@@ -194,7 +199,19 @@ impl<'ctx> ContractBuilder {
         let create_bb = || env.context().append_basic_block(func, "block");
 
         current_block = blocks.add(0, create_bb());
-        for (i, byte) in bytecode.iter().enumerate() {
+        trace!("Creating code blocks");
+        trace!("Current block ROM: {:?}", current_block.rom);
+        let mut i = 0;
+        while i < bytecode.len() {
+            let byte = &bytecode[i];
+
+            // If this byte is a push instruction then we need to skip the next n bytes
+            if *byte >= instructions::PUSH1 && *byte <= instructions::PUSH32 {
+                let byte_count = (*byte - instructions::PUSH1) as usize;
+                i += byte_count + 1;
+                continue;
+            }
+
             match *byte {
                 // Instructions that terminate a block
                 // When these appear we finish out the current block and mark it as terminating
@@ -224,13 +241,23 @@ impl<'ctx> ContractBuilder {
                 }
                 _ => {}
             }
+
+            i += 1;
         }
 
         if current_block.rom.is_empty() {
+            trace!("Setting code block ROM from {} to end", current_pc);
             current_block.rom = &bytecode[current_pc..];
+        } else {
+            trace!("Block has ROM {:?}", current_block.rom);
         }
 
         trace!("Found {} code blocks", blocks.len());
+        trace!("Bytecode: {:?}", bytecode);
+        for block in blocks.iter() {
+            trace!("  Block at offset {}", block.offset);
+            trace!("    ROM: {:?}", block.rom);
+        }
         return blocks;
     }
 
@@ -240,7 +267,7 @@ impl<'ctx> ContractBuilder {
     ) -> Result<(), BuildError> {
         let t = bctx.env.types();
 
-        let mut has_jump_instructions = false;
+        // let mut has_jump_instructions = false;
         let mut jump_cases = Vec::new();
         let jump_block = bctx
             .env
@@ -252,10 +279,14 @@ impl<'ctx> ContractBuilder {
         while let Some(code_block) = code_blocks_iter.next() {
             // If this block is a jump destination then add it to the jump table
             if code_block.is_jumpdest() {
-                jump_cases.push((
-                    t.i32.const_int(code_block.offset as u64, false),
-                    code_block.basic_block,
-                ));
+                let mut offset = code_block.offset as u64;
+                if offset == 0 {
+                    panic!("Jump destination at offset 0");
+                }
+                offset -= 1;
+
+                trace!("JUMPDEST: {}", offset);
+                jump_cases.push((t.i32.const_int(offset, false), code_block.basic_block));
             }
 
             // Prepare for building the IR for this code block. Move the builder to this basic block
@@ -266,15 +297,30 @@ impl<'ctx> ContractBuilder {
 
             let following_block = code_blocks_iter.peek();
 
+            trace!("Building code");
+            trace!("Offset: {}", code_block.offset);
+            trace!("ROM: {:?}", code_block.rom);
+
             while pc < bytecode.len() {
                 let current_instruction = bytecode[pc];
+                trace!("    PC: {}", pc);
+                trace!("    Instruction: {}", current_instruction);
 
                 // Handle PUSH<n> instructions
                 if current_instruction >= instructions::PUSH1
                     && current_instruction <= instructions::PUSH32
                 {
                     let byte_count = (current_instruction - instructions::PUSH1 + 1) as usize;
-                    ops::push(&bctx, &bytecode[pc + 1..pc + 1 + byte_count])?;
+                    trace!(
+                        "PUSH{} at {} ({}..{})",
+                        byte_count,
+                        pc,
+                        pc + 1,
+                        pc + byte_count + 1
+                    );
+                    trace!("{:?}", &bytecode);
+                    // trace!("  {:?}", &bytecode[pc + 1..(pc + byte_count + 1)]);
+                    ops::push(&bctx, &bytecode[pc + 1..(pc + byte_count + 1)])?;
                     pc += 1 + byte_count;
                     continue;
                 }
@@ -313,7 +359,7 @@ impl<'ctx> ContractBuilder {
                     instructions::SAR => ops::sar(&bctx),
 
                     // Cryptographic
-                    // instructions::KECCAK256 => ops::keccak256(&bctx),
+                    instructions::KECCAK256 => ops::keccak256(&bctx),
 
                     // Call data
                     // instructions::CALLVALUE => ops::callvalue(&bctx),
@@ -324,12 +370,8 @@ impl<'ctx> ContractBuilder {
                     // Runtime
                     instructions::POP => ops::pop(&bctx),
 
-                    instructions::JUMP => {
-                        has_jump_instructions = true;
-                        ops::jump(&bctx, jump_block)
-                    }
+                    instructions::JUMP => ops::jump(&bctx, jump_block),
                     instructions::JUMPI => {
-                        has_jump_instructions = true;
                         if let Some(next_block) = following_block {
                             ops::jumpi(&bctx, jump_block, next_block.basic_block)
                         } else {
@@ -343,7 +385,7 @@ impl<'ctx> ContractBuilder {
                     instructions::SELFDESTRUCT => ops::selfdestruct(&bctx),
 
                     _ => {
-                        println!("Unknown instruction: {}", current_instruction);
+                        error!("Unknown instruction: {}", current_instruction);
                         break;
                     }
                 }?;
@@ -372,8 +414,11 @@ impl<'ctx> ContractBuilder {
         }
 
         // Add jump table to the end of the function
-        if has_jump_instructions {
+        if code_blocks.has_jumpdest() {
             Self::build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
+        } else {
+            bctx.builder.position_at_end(jump_block);
+            ops::__invalid_jump_return(bctx)?;
         }
 
         return Ok(());

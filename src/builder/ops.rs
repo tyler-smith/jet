@@ -28,6 +28,16 @@ fn stack_pop<'ctx>(bctx: &BuildCtx) -> Result<inkwell::values::IntValue<'ctx>, B
     Ok(a)
 }
 
+fn stack_peek<'ctx>(bctx: &BuildCtx) -> Result<inkwell::values::PointerValue<'ctx>, BuildError> {
+    let stack_peek_word_result_a = bctx.builder.build_call(
+        bctx.env.runtime_fns().stack_peek_word(),
+        &[bctx.registers.exec_ctx.into()],
+        "stack_peek_word_a",
+    )?;
+    let a = unsafe { inkwell::values::PointerValue::new(stack_peek_word_result_a.as_value_ref()) };
+    Ok(a)
+}
+
 fn stack_pop_2<'ctx>(
     bctx: &BuildCtx,
 ) -> Result<
@@ -91,25 +101,26 @@ fn stack_pop_3<'ctx>(
     Ok((a, b, c))
 }
 
-// pub(crate) fn keccak256(bctx: &BuildCtx) -> Result<(), BuildError> {
-//     let a = stack_pop(bctx)?;
-//
-//     let result = bctx.builder.build_call(
-//         bctx.env.runtime_fns().keccak256(),
-//         &[a.into()],
-//         "keccak256_result",
-//     )?;
-//
-//     let a = unsafe { inkwell::values::IntValue::new(result.as_value_ref()) };
-//     stack_push_word(bctx, a)?;
-//
-//     Ok(())
-// }
+pub(crate) fn keccak256(bctx: &BuildCtx) -> Result<(), BuildError> {
+    let a = stack_peek(bctx)?;
+
+    let result = bctx.builder.build_call(
+        bctx.env.runtime_fns().keccak256(),
+        &[a.into()],
+        "keccak256_result",
+    )?;
+
+    let a = unsafe { inkwell::values::IntValue::new(result.as_value_ref()) };
+    stack_push_word(bctx, a)?;
+
+    Ok(())
+}
 
 pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
     let mut push_bytes = [0u8; 32];
     for (i, byte) in bytes.iter().enumerate() {
-        push_bytes[31 - i] = *byte;
+        push_bytes[i] = *byte;
+        // push_bytes[31 - i] = *byte;
     }
 
     trace!("Building push for bytes: {:?}", bytes);
@@ -423,6 +434,10 @@ pub(crate) fn invalid(bctx: &BuildCtx) -> Result<(), BuildError> {
 
 pub(crate) fn selfdestruct(bctx: &BuildCtx) -> Result<(), BuildError> {
     build_return(bctx, crate::runtime::returns::SELFDESTRUCT)
+}
+
+pub(crate) fn __invalid_jump_return(bctx: &BuildCtx) -> Result<(), BuildError> {
+    build_return(bctx, crate::runtime::returns::INVALID_JUMP_BLOCK)
 }
 
 fn build_return(bctx: &BuildCtx, return_value: i8) -> Result<(), BuildError> {

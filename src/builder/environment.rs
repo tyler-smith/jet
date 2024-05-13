@@ -134,6 +134,7 @@ pub(crate) struct RuntimeFns<'ctx> {
     stack_push_bytes: FunctionValue<'ctx>,
     stack_push_word: FunctionValue<'ctx>,
     stack_pop_word: FunctionValue<'ctx>,
+    stack_peek_word: FunctionValue<'ctx>,
     keccak256: FunctionValue<'ctx>,
 }
 
@@ -142,12 +143,14 @@ impl<'ctx> RuntimeFns<'ctx> {
         let stack_push_bytes = module.get_function("stack_push_bytes")?;
         let stack_push_word = module.get_function("stack_push_word")?;
         let stack_pop_word = module.get_function("stack_pop_word")?;
+        let stack_peek_word = module.get_function("stack_peek_word")?;
         let keccak256 = module.get_function("_call_keccak256")?;
 
         Some(Self {
             stack_push_bytes,
             stack_push_word,
             stack_pop_word,
+            stack_peek_word,
             keccak256,
         })
     }
@@ -164,9 +167,13 @@ impl<'ctx> RuntimeFns<'ctx> {
         self.stack_pop_word
     }
 
-    // pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
-    //     self.keccak256
-    // }
+    pub(crate) fn stack_peek_word(&self) -> FunctionValue<'ctx> {
+        self.stack_peek_word
+    }
+
+    pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
+        self.keccak256
+    }
 }
 
 pub struct Env<'ctx> {

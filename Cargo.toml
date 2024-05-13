@@ -25,3 +25,4 @@ sha3 = "0.10.8"
 clap = { version = "4.5.4", features = ["derive"] }
 serde = { version = "1.0.201", features = ["derive"] }
 syntect = "5.2.0"
+libc = "0.2.154"

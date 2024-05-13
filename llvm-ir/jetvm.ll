@@ -28,7 +28,7 @@ target triple = "x86_64-apple-macosx14.0.0"
 @exec_ctx_stack_idx = constant i32 4
 ; @exec_ctx_stack_idx = global i32 4
 
-declare void @_keccak256(i8*, i8*) nounwind
+declare void @_keccak256( [32 x i8]*, [32 x i8]*)
 
 
 ; define [32 x i8]* @_call_keccak256(i8* %input){
@@ -52,11 +52,12 @@ declare void @_keccak256(i8*, i8*) nounwind
 ; }
 
 
-define i256 @_call_keccak256([32 x i8]* %input){
+define i256 @_call_keccak256(i256* %input_ptr){
 entry:
   %result = alloca [32 x i8]
 
-  call void @_keccak256(i8* %input, i8* %result)
+  %input_cast = bitcast i256* %input_ptr to [32 x i8]*
+  call void @_keccak256([32 x i8]* %input_cast,  [32 x i8]* %result)
   %result_word = load i256, ptr %result, align 8
 
   ret i256 %result_word
@@ -122,6 +123,19 @@ entry:
 
   ; ret i256 02
   ret i256 %stack_word
+}
+
+
+define i256* @stack_peek_word (%exec_ctx_t* %0) {
+entry:
+  ; Load stack pointer
+  %stack_ptr_gep = getelementptr inbounds %exec_ctx_t, ptr %0, i32 0, i32 0
+  %stack_ptr = load i32, ptr %stack_ptr_gep, align 4
+  %stack_ptr_sub_1 = sub i32 %stack_ptr, 1
+  %stack_offset_ptr = getelementptr inbounds %exec_ctx_t, ptr %0, i32 0, i32 4, i32 %stack_ptr_sub_1
+
+  ; ret i256 02
+  ret i256* %stack_offset_ptr
 }
 
 
