@@ -1,10 +1,25 @@
 ; ModuleID = 'JetVM Runtime'
-source_filename = "jet/runtime/runtime.c"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+source_filename = "jetvm.ll"
+
+; 'e' - Little-endian
+; 'm:o' - MACH-O mangling
+; 'p270:32:32' - Addr space with 32-bit pointers, 32-bit alignment (TODO: Do we need these?)
+; 'p271:32:32' - Addr space with 32-bit pointers, 32-bit alignment (TODO: Do we need these?)
+; 'p272:64:64' - Addr space with 64-bit pointers, 64-bit alignment (TODO: Do we need these?)
+; 'i64:64' - 64-bit integers have 64-bit alignment (Other widths are natural aligned by default)
+; 'n8:16:32:64' - Native integer widths
+; 'S128' - Stack alignment of 128 bits (TODO: is this ideal?)
+;
+; Original before modification:
+; target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+;
+; Changes:
+;   - Removed 'f80:128'
+target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx14.0.0"
 
 
-%exec_ctx_t = type <{ 
+%exec_ctx_t = type <{
   i32, ; stack_ptr
   i32, ; jump_ptr
   i32, ; return offset
@@ -16,10 +31,6 @@ target triple = "x86_64-apple-macosx14.0.0"
   i160, ; address
   i256, ; balance
   i160, ; origin
-  i160, ; caller
-  i256, ; call_value
-  i8*,  ; call_data
-  i32,  ; call_data_size
   i32,  ; code size
   i256 ; gas price
 }>
@@ -75,7 +86,7 @@ entry:
   %stack_offset_ptr = getelementptr inbounds %exec_ctx_t, ptr %0, i32 0, i32 4, i32 %stack_ptr
 
   ; TODO: Check if we'll break the stack
-  
+
   ; Store word
   store i256 %1, ptr %stack_offset_ptr, align 8
 
@@ -96,7 +107,7 @@ entry:
 
   %stack_bytes_ptr = alloca [32 x i8]
   store [32 x i8] %1, [32 x i8]* %stack_bytes_ptr
-  
+
   %stack_word = load i256, ptr %stack_bytes_ptr, align 8
 
   ; Call stack_push_word
