@@ -1,16 +1,14 @@
 use std::error::Error;
-use std::ffi::{c_char, CString, FromVecWithNulError};
 
 use inkwell::context::Context;
 use inkwell::execution_engine::{ExecutionEngine, JitFunction};
-use inkwell::llvm_sys::execution_engine::LLVMGetFunctionAddress;
 use inkwell::memory_buffer::MemoryBuffer;
-use inkwell::module::{Linkage, Module};
+use inkwell::module::Module;
 use inkwell::OptimizationLevel;
 use log::{error, info, trace};
 
 use crate::builder::environment;
-use crate::builder::environment::{Env, Mode};
+use crate::builder::environment::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
 use crate::runtime::exec;
@@ -78,7 +76,7 @@ impl<'ctx> Engine<'ctx> {
         // }
     }
 
-    pub fn run_contract(&mut self, addr: &str) -> Result<exec::Context, BuildError> {
+    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, BuildError> {
         let ee = self
             .build_manager
             .env()
@@ -101,7 +99,7 @@ impl<'ctx> Engine<'ctx> {
         // trace!("  return length: {:?}", ctx.return_length);
 
         // Print the first two rows of 32 bytes of the stack
-        let stack = ctx.get_stack();
+        let stack = ctx.stack();
         trace!(
             "stack: {}",
             stack
@@ -131,7 +129,7 @@ impl<'ctx> Engine<'ctx> {
                 .fold(String::new(), |acc, x| acc + &format!("{:02X}", x))
         );
 
-        Ok(ctx)
+        Ok(exec::ContractRun::new(result, ctx))
     }
 }
 

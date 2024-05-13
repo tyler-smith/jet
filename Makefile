@@ -29,6 +29,10 @@ build: ## Build the project
 run: ## Run the jetdbg
 	cargo run
 
+.PHONY: test
+test: ## Run package tests
+	cargo test
+
 dist:
 	mkdir -p dist
 
