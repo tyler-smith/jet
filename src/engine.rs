@@ -86,48 +86,10 @@ impl<'ctx> Engine<'ctx> {
 
         let contract_exec_fn = self.get_contract_exec_fn(&ee, addr).unwrap();
 
-        // let stack = [0u8; 32 * 1024];
-        let ctx = exec::Context::new();
-
         trace!("Running function...");
+        let ctx = exec::Context::new();
         let result = unsafe { contract_exec_fn.call(&ctx as *const exec::Context) };
-        trace!("Result: {}", result);
-        trace!("{}", ctx);
-        // trace!("Context:");
-        // trace!("  stack_pointer: {:?}", ctx.stack_ptr);
-        // trace!("  return offset: {:?}", ctx.return_offset);
-        // trace!("  return length: {:?}", ctx.return_length);
-
-        // Print the first two rows of 32 bytes of the stack
-        let stack = ctx.stack();
-        trace!(
-            "stack: {}",
-            stack
-                .iter()
-                .take(32)
-                .fold(String::new(), |acc, x| acc + &format!("{:02X}", x))
-        );
-        trace!(
-            "stack: {}",
-            stack[32..64]
-                .iter()
-                .take(32)
-                .fold(String::new(), |acc, x| acc + &format!("{:02X}", x))
-        );
-        trace!(
-            "stack: {}",
-            stack[64..96]
-                .iter()
-                .take(32)
-                .fold(String::new(), |acc, x| acc + &format!("{:02X}", x))
-        );
-        trace!(
-            "stack: {}",
-            stack[96..128]
-                .iter()
-                .take(32)
-                .fold(String::new(), |acc, x| acc + &format!("{:02X}", x))
-        );
+        trace!("Function returned");
 
         Ok(exec::ContractRun::new(result, ctx))
     }

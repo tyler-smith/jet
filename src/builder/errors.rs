@@ -8,6 +8,7 @@ pub enum BuildError {
     BuilderError(BuilderError),
     LLVMError(LLVMString),
     VerifyError,
+    NotImplemented,
 }
 
 impl From<BuilderError> for BuildError {
@@ -28,6 +29,7 @@ impl Display for BuildError {
             BuildError::BuilderError(e) => write!(f, "BuildError: {}", e),
             BuildError::LLVMError(e) => write!(f, "BuildError: LLVM: {}", e),
             BuildError::VerifyError => write!(f, "BuildError: verify error"),
+            BuildError::NotImplemented => write!(f, "BuildError: not implemented"),
         }
     }
 }

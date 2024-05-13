@@ -4,6 +4,7 @@ use log::trace;
 
 use crate::builder::contract_builder::BuildCtx;
 use crate::builder::errors::BuildError;
+use crate::runtime::ReturnCode;
 
 fn stack_push_word<'ctx>(
     bctx: &BuildCtx,
@@ -149,7 +150,7 @@ pub(crate) fn push(bctx: &BuildCtx, bytes: &[u8]) -> Result<(), BuildError> {
 }
 
 pub(crate) fn stop(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::STOP)
+    __build_return(bctx, ReturnCode::Stop)
 }
 
 pub(crate) fn add(bctx: &BuildCtx) -> Result<(), BuildError> {
@@ -421,26 +422,26 @@ pub(crate) fn jumpi(
 }
 
 pub(crate) fn _return(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::EXPLICIT_RETURN)
+    __build_return(bctx, ReturnCode::ExplicitReturn)
 }
 
 pub(crate) fn revert(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::REVERT)
+    __build_return(bctx, ReturnCode::Revert)
 }
 
 pub(crate) fn invalid(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::INVALID)
+    __build_return(bctx, ReturnCode::Invalid)
 }
 
-pub(crate) fn selfdestruct(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::SELFDESTRUCT)
+pub(crate) fn selfdestruct(_: &BuildCtx) -> Result<(), BuildError> {
+    Err(BuildError::NotImplemented)
 }
 
 pub(crate) fn __invalid_jump_return(bctx: &BuildCtx) -> Result<(), BuildError> {
-    build_return(bctx, crate::runtime::returns::INVALID_JUMP_BLOCK)
+    __build_return(bctx, ReturnCode::InvalidJumpBlock)
 }
 
-fn build_return(bctx: &BuildCtx, return_value: i8) -> Result<(), BuildError> {
+pub(crate) fn __build_return(bctx: &BuildCtx, return_value: ReturnCode) -> Result<(), BuildError> {
     let return_value = bctx.env.types().i8.const_int(return_value as u64, false);
     bctx.builder.build_return(Some(&return_value))?;
     Ok(())

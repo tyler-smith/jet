@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use clap::{Parser, Subcommand};
 use inkwell::context::Context;
+use log::info;
 use simple_logger::SimpleLogger;
 
 #[derive(Parser, Debug)]
@@ -89,7 +90,9 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
     engine.build_contract("0x1234", test_rom)?;
-    engine.run_contract("0x1234")?;
+    let run = engine.run_contract("0x1234")?;
+    info!("{}", run);
+
     Ok(())
 }
 

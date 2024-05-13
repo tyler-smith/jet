@@ -6,6 +6,7 @@ use crate::builder::environment::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::ops;
 use crate::instructions;
+use crate::runtime::ReturnCode;
 
 pub(crate) struct Registers<'ctx> {
     pub(crate) exec_ctx: inkwell::values::PointerValue<'ctx>,
@@ -402,14 +403,13 @@ impl<'ctx> ContractBuilder {
             // If we have reached the end of the bytecode but have no termination instruction then
             // we will either jump to the next block or return from the function.
             match following_block {
-                Some(next_block) => bctx
-                    .builder
-                    .build_unconditional_branch(next_block.basic_block),
-                None => {
-                    let return_value =
-                        t.i8.const_int(crate::runtime::returns::IMPLICIT_RETURN as u64, false);
-                    bctx.builder.build_return(Some(&return_value))
+                Some(next_block) => {
+                    bctx.builder
+                        .build_unconditional_branch(next_block.basic_block)
+                        .unwrap();
+                    Ok(())
                 }
+                None => ops::__build_return(bctx, ReturnCode::ImplicitReturn),
             }?;
         }
 
@@ -436,8 +436,7 @@ impl<'ctx> ContractBuilder {
             .context()
             .append_basic_block(bctx.func, "jump_failure");
         bctx.builder.position_at_end(jump_failure_block);
-        let return_value =
-            t.i8.const_int(crate::runtime::returns::JUMP_FAILURE as u64, false);
+        let return_value = t.i8.const_int(ReturnCode::JumpFailure as u64, false);
         bctx.builder.build_return(Some(&return_value))?;
 
         // Build jump table logic

@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::runtime;
+
 pub type Result = i8;
 
 #[repr(C)]
@@ -48,9 +50,30 @@ impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Context {{ stack_ptr: {}, jump_pointer: {}, return_offset: {}, return_length: {} }}",
+            "Context: {{ stack_ptr: {}, jump_pointer: {}, return_offset: {}, return_length: {} }}\n",
             self.stack_ptr, self.jump_ptr, self.return_offset, self.return_length
-        )
+        )?;
+
+        let mut stack_items = self.stack_ptr + 3;
+        if stack_items > runtime::STACK_SIZE_WORDS {
+            stack_items = runtime::STACK_SIZE_WORDS;
+        }
+
+        for i in 0..stack_items {
+            let offset = 32 * i as usize;
+            let end = offset + 32;
+            write!(
+                f,
+                "stack {}: {}\n",
+                i,
+                self.stack[offset..end]
+                    .iter()
+                    .take(32)
+                    .fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -70,6 +93,12 @@ impl ContractRun {
 
     pub fn ctx(&self) -> &Context {
         &self.ctx
+    }
+}
+
+impl fmt::Display for ContractRun {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ContractRun:\nResult: {}\n{}", self.result, self.ctx)
     }
 }
 
