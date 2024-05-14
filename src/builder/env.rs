@@ -5,7 +5,10 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::FunctionValue;
 
+use crate::runtime;
 use crate::runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS};
+
+const PACK_STRUCTS: bool = true;
 
 #[derive(serde::Serialize, Clone, Debug, Default)]
 pub struct Options {
@@ -65,10 +68,15 @@ pub struct Types<'ctx> {
     // Primitives
     pub i8: inkwell::types::IntType<'ctx>,
     pub i32: inkwell::types::IntType<'ctx>,
+    pub ptr: inkwell::types::PointerType<'ctx>,
 
     // Architecture
     pub word: inkwell::types::IntType<'ctx>,
     pub stack: inkwell::types::ArrayType<'ctx>,
+
+    pub mem_len: inkwell::types::IntType<'ctx>,
+    pub mem_cap: inkwell::types::IntType<'ctx>,
+    pub mem: inkwell::types::StructType<'ctx>,
 
     // Runtime
     pub stack_ptr: inkwell::types::IntType<'ctx>,
@@ -86,12 +94,17 @@ impl<'ctx> Types<'ctx> {
         // Primitives
         let i8 = context.i8_type();
         let i32 = context.i32_type();
+        let ptr = context.ptr_type(AddressSpace::default());
 
         // Architecture
         let word = context.custom_width_int_type(WORD_SIZE_BITS);
         let stack = word.array_type(STACK_SIZE_WORDS);
 
-        // Runtime
+        let mem_len = context.i32_type();
+        let mem_cap = context.i32_type();
+        let mem = context.struct_type(&[ptr.into(), mem_len.into(), mem_cap.into()], PACK_STRUCTS);
+
+        // Registers
         let stack_ptr = context.i32_type();
         let jump_ptr = context.i32_type();
         let return_offset = context.i32_type();
@@ -104,8 +117,9 @@ impl<'ctx> Types<'ctx> {
                 return_offset.into(),
                 return_length.into(),
                 stack.into(),
+                mem.into(),
             ],
-            true,
+            PACK_STRUCTS,
         );
 
         // contract func sig: func(ctx &exec_ctx) i8
@@ -115,9 +129,13 @@ impl<'ctx> Types<'ctx> {
         Self {
             i8,
             i32,
+            ptr,
 
             word,
             stack,
+            mem_len,
+            mem_cap,
+            mem,
 
             stack_ptr,
             jump_ptr,
@@ -135,22 +153,37 @@ pub(crate) struct RuntimeFns<'ctx> {
     stack_push_word: FunctionValue<'ctx>,
     stack_pop_word: FunctionValue<'ctx>,
     stack_peek_word: FunctionValue<'ctx>,
+
+    memory_store_word: FunctionValue<'ctx>,
+    memory_store_byte: FunctionValue<'ctx>,
+    memory_load_word: FunctionValue<'ctx>,
+
     keccak256: FunctionValue<'ctx>,
 }
 
 impl<'ctx> RuntimeFns<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
-        let stack_push_bytes = module.get_function("stack_push_bytes")?;
-        let stack_push_word = module.get_function("stack_push_word")?;
-        let stack_pop_word = module.get_function("stack_pop_word")?;
-        let stack_peek_word = module.get_function("stack_peek_word")?;
-        let keccak256 = module.get_function("_call_keccak256")?;
+        let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
+        let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
+        let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP_WORD)?;
+        let stack_peek_word = module.get_function(runtime::FN_NAME_STACK_PEEK_WORD)?;
+
+        let memory_store_word = module.get_function(runtime::FN_NAME_MEMORY_STORE_WORD)?;
+        let memory_store_byte = module.get_function(runtime::FN_NAME_MEMORY_STORE_BYTE)?;
+        let memory_load_word = module.get_function(runtime::FN_NAME_MEMORY_LOAD_WORD)?;
+
+        let keccak256 = module.get_function(runtime::FN_NAME_KECCAK256)?;
 
         Some(Self {
             stack_push_bytes,
             stack_push_word,
             stack_pop_word,
             stack_peek_word,
+
+            memory_store_word,
+            memory_store_byte,
+            memory_load_word,
+
             keccak256,
         })
     }
@@ -169,6 +202,18 @@ impl<'ctx> RuntimeFns<'ctx> {
 
     pub(crate) fn stack_peek_word(&self) -> FunctionValue<'ctx> {
         self.stack_peek_word
+    }
+
+    pub(crate) fn mstore(&self) -> FunctionValue<'ctx> {
+        self.memory_store_word
+    }
+
+    pub(crate) fn mstore8(&self) -> FunctionValue<'ctx> {
+        self.memory_store_byte
+    }
+
+    pub(crate) fn mload(&self) -> FunctionValue<'ctx> {
+        self.memory_load_word
     }
 
     pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {

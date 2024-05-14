@@ -5,7 +5,7 @@ use syntect::parsing::SyntaxSet;
 use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
 
 use crate::builder::contract_builder::ContractBuilder;
-use crate::builder::environment::Env;
+use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 
 pub struct Manager<'ctx> {

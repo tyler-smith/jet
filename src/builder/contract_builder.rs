@@ -2,7 +2,7 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, IntValue};
 use log::{error, info, trace};
 
-use crate::builder::environment::Env;
+use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::ops;
 use crate::instructions;
@@ -151,15 +151,6 @@ pub(crate) struct ContractBuilder {
 }
 
 impl<'ctx> ContractBuilder {
-    // pub fn new(env: &Env<'ctx>) -> Self {
-    //     let builder = env.context().create_builder();
-    //
-    //     Self {
-    //         builder,
-    //         // module,
-    //     }
-    // }
-
     pub fn build<'b>(env: &'b Env<'ctx>, name: &str, rom: &[u8]) -> Result<(), BuildError> {
         let builder = env.context().create_builder();
 
@@ -200,16 +191,18 @@ impl<'ctx> ContractBuilder {
         let create_bb = || env.context().append_basic_block(func, "block");
 
         current_block = blocks.add(0, create_bb());
-        trace!("Creating code blocks");
-        trace!("Current block ROM: {:?}", current_block.rom);
+        trace!("find_code_blocks: Creating code blocks");
+        trace!("find_code_blocks: ROM: {:?}", bytecode);
         let mut i = 0;
         while i < bytecode.len() {
             let byte = &bytecode[i];
+            trace!("find_code_blocks: Checking byte {:?}", byte);
 
             // If this byte is a push instruction then we need to skip the next n bytes
             if *byte >= instructions::PUSH1 && *byte <= instructions::PUSH32 {
-                let byte_count = (*byte - instructions::PUSH1) as usize;
+                let byte_count = (*byte - instructions::PUSH1 + 1) as usize;
                 i += byte_count + 1;
+                trace!("find_code_blocks: Found push, skipping {} bytes", i);
                 continue;
             }
 
@@ -220,18 +213,21 @@ impl<'ctx> ContractBuilder {
                 | instructions::RETURN
                 | instructions::REVERT
                 | instructions::JUMP => {
+                    trace!("find_code_blocks: Found terminator {}", *byte);
                     current_block.rom = &bytecode[current_pc..i + 1];
                     current_block.set_terminates();
                     current_pc = i + 1;
                 }
 
                 instructions::JUMPI => {
+                    trace!("find_code_blocks: Found JUMPI");
                     current_block.rom = &bytecode[current_pc..i + 1];
                     current_pc = i + 1;
                     current_block = blocks.add(current_pc, create_bb());
                 }
 
                 instructions::JUMPDEST => {
+                    trace!("find_code_blocks: Found JUMPDEST");
                     if current_block.rom.is_empty() {
                         current_block.rom = &bytecode[current_pc..i];
                     }
@@ -240,24 +236,29 @@ impl<'ctx> ContractBuilder {
                     current_block = blocks.add(current_pc, create_bb());
                     current_block.set_is_jumpdest();
                 }
-                _ => {}
+                _ => {
+                    trace!("find_code_blocks: byte {} is uninteresting", *byte);
+                }
             }
 
             i += 1;
         }
 
         if current_block.rom.is_empty() {
-            trace!("Setting code block ROM from {} to end", current_pc);
+            trace!(
+                "find_code_blocks: Setting code block ROM from {} to end",
+                current_pc
+            );
             current_block.rom = &bytecode[current_pc..];
         } else {
-            trace!("Block has ROM {:?}", current_block.rom);
+            trace!("find_code_blocks: Block has ROM {:?}", current_block.rom);
         }
 
-        trace!("Found {} code blocks", blocks.len());
-        trace!("Bytecode: {:?}", bytecode);
+        trace!("find_code_blocks: Found {} code blocks", blocks.len());
+        trace!("find_code_blocks: Bytecode: {:?}", bytecode);
         for block in blocks.iter() {
-            trace!("  Block at offset {}", block.offset);
-            trace!("    ROM: {:?}", block.rom);
+            trace!("find_code_blocks:   Block at offset {}", block.offset);
+            trace!("find_code_blocks:     ROM: {:?}", block.rom);
         }
         return blocks;
     }
@@ -370,6 +371,10 @@ impl<'ctx> ContractBuilder {
 
                     // Runtime
                     instructions::POP => ops::pop(&bctx),
+
+                    instructions::MLOAD => ops::mload(&bctx),
+                    instructions::MSTORE => ops::mstore(&bctx),
+                    instructions::MSTORE8 => ops::mstore8(&bctx),
 
                     instructions::JUMP => ops::jump(&bctx, jump_block),
                     instructions::JUMPI => {

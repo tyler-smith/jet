@@ -1,27 +1,41 @@
 use std::fmt;
 
-use crate::runtime;
+use crate::runtime::*;
 
 pub type Result = i8;
 
 #[repr(C)]
-#[derive(Debug)]
+pub struct Memory {
+    buf: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
+    len: u32,
+    cap: u32,
+}
+
+#[repr(C)]
 pub struct Context {
     stack_ptr: u32,
     jump_ptr: u32,
     return_offset: u32,
     return_length: u32,
-    stack: [u8; 32 * 1024],
+    stack: [u8; (WORD_SIZE_BYTES * STACK_SIZE_WORDS) as usize],
+    // memory: [u8; WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS],
+    memory: Memory,
 }
 
 impl Context {
     pub fn new() -> Self {
+        let init_memory_buf = [0u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize];
         Context {
             stack_ptr: 0,
             jump_ptr: 0,
             return_offset: 0,
             return_length: 0,
-            stack: [0; 32 * 1024],
+            stack: [0; (WORD_SIZE_BYTES * STACK_SIZE_WORDS) as usize],
+            memory: Memory {
+                buf: init_memory_buf,
+                len: 0,
+                cap: MEMORY_INITIAL_SIZE_WORDS,
+            },
         }
     }
 
@@ -44,27 +58,52 @@ impl Context {
     pub fn stack(&self) -> &[u8] {
         &self.stack
     }
+
+    pub fn memory(&self) -> &Memory {
+        &self.memory
+    }
 }
 
 impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Context: {{ stack_ptr: {}, jump_pointer: {}, return_offset: {}, return_length: {} }}\n",
+            "Context:\n  {{ stack_ptr: {}, jump_pointer: {}, return_offset: {}, return_length: {} }}\n",
             self.stack_ptr, self.jump_ptr, self.return_offset, self.return_length
         )?;
 
-        let mut stack_items = self.stack_ptr + 3;
-        if stack_items > runtime::STACK_SIZE_WORDS {
-            stack_items = runtime::STACK_SIZE_WORDS;
-        }
+        write!(
+            f,
+            "Memory:\n  {{ len: {}, cap: {} }}\n",
+            self.memory.len, self.memory.cap
+        )?;
 
-        for i in 0..stack_items {
-            let offset = 32 * i as usize;
-            let end = offset + 32;
+        for i in 0..1 {
+            let offset = (32 * i) as usize;
+            let end = (offset + 32) as usize;
             write!(
                 f,
-                "stack {}: {}\n",
+                "  {}: {}\n",
+                i,
+                self.memory.buf[offset..end]
+                    .iter()
+                    .take(32)
+                    .fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
+            )?;
+        }
+
+        let mut stack_items = self.stack_ptr + 3;
+        if stack_items > 5 {
+            stack_items = 5;
+        }
+
+        write!(f, "Stack:\n")?;
+        for i in 0..stack_items {
+            let offset = (32 * i) as usize;
+            let end = (offset + 32) as usize;
+            write!(
+                f,
+                "  {}: {}\n",
                 i,
                 self.stack[offset..end]
                     .iter()

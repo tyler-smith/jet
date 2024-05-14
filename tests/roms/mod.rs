@@ -1,6 +1,6 @@
 use inkwell::context::Context;
 
-use jet::builder::environment::Options;
+use jet::builder::env::Options;
 use jet::builder::errors::BuildError;
 use jet::runtime::exec;
 
@@ -49,8 +49,9 @@ impl TestContractRun {
 
         let actual_stack = ctx.stack();
         for (i, expected_word) in self.stack.iter().enumerate() {
+            let idx = i * 32;
             let mut actual_word = [0; 32];
-            actual_word[..].copy_from_slice(actual_stack[i..i + 32].as_ref());
+            actual_word[..].copy_from_slice(actual_stack[idx..idx + 32].as_ref());
             assert_eq!(actual_word, *expected_word);
         }
     }

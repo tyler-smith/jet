@@ -33,5 +33,32 @@ rom_tests! {
             stack: vec![stack_word(&[42])],
             ..Default::default()
         },
+    },
+
+    basic_mem_ops: Test {
+        rom: vec![
+            jet::instructions::PUSH1,
+            0xFF,
+            jet::instructions::PUSH1,
+            0x02,
+            jet::instructions::MSTORE,
+            jet::instructions::PUSH1,
+            0x00,
+            jet::instructions::MLOAD,
+            jet::instructions::PUSH2,
+            0xFF,
+            0xFF,
+            jet::instructions::PUSH1,
+            0x00,
+            jet::instructions::MSTORE8,
+            jet::instructions::PUSH1,
+            0x00,
+            jet::instructions::MLOAD,
+        ],
+        expected: TestContractRun {
+            stack_ptr: 2,
+            stack: vec![stack_word(&[0x00, 0x00, 0xFF]), stack_word(&[0xFF, 0x00, 0xFF])],
+            ..Default::default()
+        },
     }
 }

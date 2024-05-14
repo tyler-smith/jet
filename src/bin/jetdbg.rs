@@ -15,7 +15,7 @@ struct CLI {
     log_level: Option<log::LevelFilter>,
 
     #[arg(short, long)]
-    mode: Option<jet::builder::environment::Mode>,
+    mode: Option<jet::builder::env::Mode>,
 
     #[arg(short, long, action)]
     use_vstack: Option<bool>,
@@ -30,7 +30,7 @@ struct CLI {
 #[derive(Parser, Debug, Default, Clone)]
 struct BuildArgs {
     #[arg(short, long)]
-    mode: Option<jet::builder::environment::Mode>,
+    mode: Option<jet::builder::env::Mode>,
 
     #[arg(short, long, action)]
     use_vstack: Option<bool>,
@@ -70,20 +70,40 @@ impl Display for Error {
 }
 
 fn build_cmd(args: BuildArgs) -> Result<(), Error> {
-    let build_opts = jet::builder::environment::Options::new(
-        args.mode.unwrap_or(jet::builder::environment::Mode::Debug),
+    let build_opts = jet::builder::env::Options::new(
+        args.mode.unwrap_or(jet::builder::env::Mode::Debug),
         args.use_vstack.unwrap_or(true),
         args.emit_llvm.unwrap_or(true),
         args.assert.unwrap_or(true),
     );
 
+    // let test_rom = &vec![
+    //     jet::instructions::PUSH1,
+    //     0x03,
+    //     jet::instructions::JUMP,
+    //     jet::instructions::JUMPDEST,
+    //     jet::instructions::PUSH1,
+    //     42,
+    // ];
+
     let test_rom = &vec![
         jet::instructions::PUSH1,
-        0x03,
-        jet::instructions::JUMP,
-        jet::instructions::JUMPDEST,
+        0xFF,
         jet::instructions::PUSH1,
-        42,
+        0x02,
+        jet::instructions::MSTORE,
+        jet::instructions::PUSH1,
+        0x00,
+        jet::instructions::MLOAD,
+        jet::instructions::PUSH2,
+        0xFF,
+        0xFF,
+        jet::instructions::PUSH1,
+        0x00,
+        jet::instructions::MSTORE8,
+        jet::instructions::PUSH1,
+        0x00,
+        jet::instructions::MLOAD,
     ];
 
     let context = Context::create();

@@ -7,8 +7,8 @@ use inkwell::module::Module;
 use inkwell::OptimizationLevel;
 use log::{error, info, trace};
 
-use crate::builder::environment;
-use crate::builder::environment::Env;
+use crate::builder::env;
+use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
 use crate::runtime::exec;
@@ -20,10 +20,7 @@ pub struct Engine<'ctx> {
 }
 
 impl<'ctx> Engine<'ctx> {
-    pub fn new(
-        context: &'ctx Context,
-        build_opts: environment::Options,
-    ) -> Result<Self, BuildError> {
+    pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, BuildError> {
         let runtime_module = load_runtime_module(context).unwrap();
         let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);

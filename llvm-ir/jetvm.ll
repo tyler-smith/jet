@@ -18,13 +18,22 @@ source_filename = "jetvm.ll"
 target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx14.0.0"
 
+%mem_buf_t = type [32448 x i8]
+
+%mem_t = type <{
+  %mem_buf_t *, ; data
+  i32, ; length
+  i32 ; capacity
+}>
+
 
 %exec_ctx_t = type <{
   i32, ; stack_ptr
   i32, ; jump_ptr
   i32, ; return offset
   i32, ; return length
-  [1024 x i256]
+  [1024 x i256], ; stack
+  %mem_t ; memory
 }>
 
 %block_info_t = type <{
@@ -73,8 +82,6 @@ entry:
 
   ret i256 %result_word
 }
-
-
 
 ; stack_push_word pushes a word onto the stack and increments the stack pointer.
 ; Returns true if the operation was successful, false if the stack is full.
@@ -147,6 +154,49 @@ entry:
 
   ; ret i256 02
   ret i256* %stack_offset_ptr
+}
+
+define i8 @memory_store_word (%exec_ctx_t* %ctx, i256 %loc, i256 %val) {
+entry:
+  ;%loc = call i256 @stack_pop_word (%exec_ctx_t* %0)
+  %loc_i32 = trunc i256 %loc to i32
+  ;%val = call i256 @stack_pop_word (%exec_ctx_t* %0)
+
+  %mem = getelementptr inbounds %exec_ctx_t, ptr %ctx, i32 0, i32 5
+  %mem_buf_ptr = getelementptr inbounds %mem_t, ptr %mem, i32 0, i32 0
+  %mem_loc_ptr = getelementptr inbounds %mem_buf_t, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+
+  store i256 %val, ptr %mem_loc_ptr, align 1
+
+  ret i8 0
+}
+
+define i8 @memory_store_byte (%exec_ctx_t* %ctx, i256 %loc, i256 %val) {
+entry:
+  ;%loc = call i256 @stack_pop_word (%exec_ctx_t* %0)
+  %loc_i32 = trunc i256 %loc to i32
+  ;%val = call i256 @stack_pop_word (%exec_ctx_t* %0)
+  %val_i8 = trunc i256 %val to i8
+
+  %mem = getelementptr inbounds %exec_ctx_t, ptr %ctx, i32 0, i32 5
+  %mem_buf_ptr = getelementptr inbounds %mem_t, ptr %mem, i32 0, i32 0
+  %mem_loc_ptr = getelementptr inbounds %mem_buf_t, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+
+  store i8 %val_i8, ptr %mem_loc_ptr, align 1
+  ret i8 0
+}
+
+define i256 @memory_load_word (%exec_ctx_t* %ctx, i256 %loc) {
+entry:
+  ;%loc = call i256 @stack_pop_word (%exec_ctx_t* %0)
+  %loc_i32 = trunc i256 %loc to i32
+
+  %mem = getelementptr inbounds %exec_ctx_t, ptr %ctx, i32 0, i32 5
+  %mem_buf_ptr = getelementptr inbounds %mem_t, ptr %mem, i32 0, i32 0
+  %mem_loc_ptr = getelementptr inbounds %mem_buf_t, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+
+  %val = load i256, ptr %mem_loc_ptr, align 1
+  ret i256 %val
 }
 
 

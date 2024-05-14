@@ -391,6 +391,40 @@ pub(crate) fn pop(bctx: &BuildCtx) -> Result<(), BuildError> {
     Ok(())
 }
 
+pub(crate) fn mload(bctx: &BuildCtx) -> Result<(), BuildError> {
+    let loc = stack_pop(bctx)?;
+    let ret = bctx.builder.build_call(
+        bctx.env.runtime_fns().mload(),
+        &[bctx.registers.exec_ctx.into(), loc.into()],
+        "mload",
+    )?;
+
+    let loaded = unsafe { inkwell::values::IntValue::new(ret.as_value_ref()) };
+    stack_push_word(bctx, loaded)?;
+
+    Ok(())
+}
+
+pub(crate) fn mstore(bctx: &BuildCtx) -> Result<(), BuildError> {
+    let (loc, val) = stack_pop_2(bctx)?;
+    bctx.builder.build_call(
+        bctx.env.runtime_fns().mstore(),
+        &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
+        "mstore",
+    )?;
+    Ok(())
+}
+
+pub(crate) fn mstore8(bctx: &BuildCtx) -> Result<(), BuildError> {
+    let (loc, val) = stack_pop_2(bctx)?;
+    bctx.builder.build_call(
+        bctx.env.runtime_fns().mstore8(),
+        &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
+        "mstore8",
+    )?;
+    Ok(())
+}
+
 pub(crate) fn jump(bctx: &BuildCtx, jump_block: BasicBlock) -> Result<(), BuildError> {
     let pc = stack_pop(bctx)?;
 
