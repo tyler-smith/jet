@@ -1,5 +1,6 @@
 use inkwell::context::Context;
 
+use jet::builder::env::Mode::Debug;
 use jet::builder::env::Options;
 use jet::builder::errors::BuildError;
 use jet::runtime::exec;
@@ -11,10 +12,15 @@ macro_rules! rom_tests {
         $(
             paste::item! {
                 #[test]
-                fn [<test_rom_ $name>]() {
-                    // println!("Running test: {}", stringify!($name));
+                fn [<test_rom_with_vstack $name>]() -> Result<(), jet::builder::errors::BuildError> {
                     let t: Test = $test;
-                    execute_test_rom(t).unwrap();
+                    _test_rom_body(t, true)
+                }
+
+                #[test]
+                fn [<test_rom_with_real_stack $name>]() -> Result<(), jet::builder::errors::BuildError> {
+                    let t: Test = $test;
+                    _test_rom_body(t, false)
                 }
             }
         )*
@@ -30,7 +36,7 @@ pub(crate) struct Test {
 pub(crate) struct TestContractRun {
     pub(crate) result: i8,
     pub(crate) stack_ptr: u32,
-    pub(crate) jump_pointer: u32,
+    pub(crate) jump_ptr: u32,
     pub(crate) return_offset: u32,
     pub(crate) return_length: u32,
     pub(crate) stack: Vec<[u8; 32]>,
@@ -42,7 +48,7 @@ impl TestContractRun {
 
         let ctx = run.ctx();
         assert_eq!(ctx.stack_ptr(), self.stack_ptr);
-        assert_eq!(ctx.jump_ptr(), self.jump_pointer);
+        assert_eq!(ctx.jump_ptr(), self.jump_ptr);
         assert_eq!(ctx.return_offset(), self.return_offset);
         assert_eq!(ctx.return_length(), self.return_length);
         assert_eq!(ctx.stack_ptr(), self.stack.len() as u32);
@@ -57,9 +63,10 @@ impl TestContractRun {
     }
 }
 
-pub(crate) fn execute_test_rom(t: Test) -> Result<(), BuildError> {
+pub(crate) fn _test_rom_body(t: Test, use_vstack: bool) -> Result<(), BuildError> {
     let context = Context::create();
-    let mut engine = jet::engine::Engine::new(&context, Options::default())?;
+    let opts = Options::new(Debug, use_vstack, false, true);
+    let mut engine = jet::engine::Engine::new(&context, opts)?;
 
     engine.build_contract("0x1234", t.rom.as_slice())?;
     let run = engine.run_contract("0x1234")?;

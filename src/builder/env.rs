@@ -152,13 +152,9 @@ pub(crate) struct RuntimeFns<'ctx> {
     stack_push_bytes: FunctionValue<'ctx>,
     stack_push_word: FunctionValue<'ctx>,
     stack_pop_word: FunctionValue<'ctx>,
-    stack_peek_word: FunctionValue<'ctx>,
-
     memory_store_word: FunctionValue<'ctx>,
     memory_store_byte: FunctionValue<'ctx>,
     memory_load_word: FunctionValue<'ctx>,
-
-    keccak256: FunctionValue<'ctx>,
 }
 
 impl<'ctx> RuntimeFns<'ctx> {
@@ -166,25 +162,18 @@ impl<'ctx> RuntimeFns<'ctx> {
         let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
         let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
         let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP_WORD)?;
-        let stack_peek_word = module.get_function(runtime::FN_NAME_STACK_PEEK_WORD)?;
 
         let memory_store_word = module.get_function(runtime::FN_NAME_MEMORY_STORE_WORD)?;
         let memory_store_byte = module.get_function(runtime::FN_NAME_MEMORY_STORE_BYTE)?;
         let memory_load_word = module.get_function(runtime::FN_NAME_MEMORY_LOAD_WORD)?;
 
-        let keccak256 = module.get_function(runtime::FN_NAME_KECCAK256)?;
-
         Some(Self {
             stack_push_bytes,
             stack_push_word,
             stack_pop_word,
-            stack_peek_word,
-
             memory_store_word,
             memory_store_byte,
             memory_load_word,
-
-            keccak256,
         })
     }
 
@@ -200,10 +189,6 @@ impl<'ctx> RuntimeFns<'ctx> {
         self.stack_pop_word
     }
 
-    pub(crate) fn stack_peek_word(&self) -> FunctionValue<'ctx> {
-        self.stack_peek_word
-    }
-
     pub(crate) fn mstore(&self) -> FunctionValue<'ctx> {
         self.memory_store_word
     }
@@ -214,10 +199,6 @@ impl<'ctx> RuntimeFns<'ctx> {
 
     pub(crate) fn mload(&self) -> FunctionValue<'ctx> {
         self.memory_load_word
-    }
-
-    pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
-        self.keccak256
     }
 }
 

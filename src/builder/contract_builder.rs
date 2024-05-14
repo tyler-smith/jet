@@ -8,6 +8,8 @@ use crate::builder::ops;
 use crate::instructions;
 use crate::runtime::ReturnCode;
 
+const VSTACK_INIT_SIZE: usize = 32;
+
 pub(crate) struct Registers<'ctx> {
     pub(crate) exec_ctx: inkwell::values::PointerValue<'ctx>,
     // pub(crate) stack_ptr: inkwell::values::PointerValue<'ctx>,
@@ -276,128 +278,26 @@ impl<'ctx> ContractBuilder {
             .context()
             .append_basic_block(bctx.func, "jump_block");
 
+        let mut vstack: Vec<IntValue<'ctx>> = Vec::with_capacity(VSTACK_INIT_SIZE);
+
         // Iterate over the code blocks and interpret the bytecode of each one
         let mut code_blocks_iter = code_blocks.iter().peekable();
         while let Some(code_block) = code_blocks_iter.next() {
             // If this block is a jump destination then add it to the jump table
             if code_block.is_jumpdest() {
+                // JUMPDEST code blocks start at the instruction after the JUMPDEST instruction, so
+                // we subtract 1, and a given offset of 0 is invalid.
                 let mut offset = code_block.offset as u64;
                 if offset == 0 {
                     panic!("Jump destination at offset 0");
                 }
                 offset -= 1;
-
-                trace!("JUMPDEST: {}", offset);
                 jump_cases.push((t.i32.const_int(offset, false), code_block.basic_block));
             }
 
-            // Prepare for building the IR for this code block. Move the builder to this basic block
-            // and start a relative PC at 0.
-            let bytecode = code_block.rom;
-            let mut pc = 0;
-            bctx.builder.position_at_end(code_block.basic_block);
-
             let following_block = code_blocks_iter.peek();
 
-            trace!("Building code");
-            trace!("Offset: {}", code_block.offset);
-            trace!("ROM: {:?}", code_block.rom);
-
-            while pc < bytecode.len() {
-                let current_instruction = bytecode[pc];
-                trace!("    PC: {}", pc);
-                trace!("    Instruction: {}", current_instruction);
-
-                // Handle PUSH<n> instructions
-                if current_instruction >= instructions::PUSH1
-                    && current_instruction <= instructions::PUSH32
-                {
-                    let byte_count = (current_instruction - instructions::PUSH1 + 1) as usize;
-                    trace!(
-                        "PUSH{} at {} ({}..{})",
-                        byte_count,
-                        pc,
-                        pc + 1,
-                        pc + byte_count + 1
-                    );
-                    trace!("{:?}", &bytecode);
-                    // trace!("  {:?}", &bytecode[pc + 1..(pc + byte_count + 1)]);
-                    ops::push(&bctx, &bytecode[pc + 1..(pc + byte_count + 1)])?;
-                    pc += 1 + byte_count;
-                    continue;
-                }
-
-                // Handle remaining instructions
-                match current_instruction {
-                    instructions::STOP => ops::stop(&bctx),
-
-                    // Arithmetic
-                    instructions::ADD => ops::add(&bctx),
-                    instructions::MUL => ops::mul(&bctx),
-                    instructions::SUB => ops::sub(&bctx),
-                    instructions::DIV => ops::div(&bctx),
-                    instructions::SDIV => ops::sdiv(&bctx),
-                    instructions::MOD => ops::_mod(&bctx),
-                    instructions::SMOD => ops::smod(&bctx),
-                    instructions::ADDMOD => ops::addmod(&bctx),
-                    instructions::MULMOD => ops::mulmod(&bctx),
-                    instructions::EXP => ops::exp(&bctx),
-                    instructions::SIGNEXTEND => ops::signextend(&bctx),
-
-                    // Comparisons
-                    instructions::LT => ops::lt(&bctx),
-                    instructions::GT => ops::gt(&bctx),
-                    instructions::SLT => ops::slt(&bctx),
-                    instructions::SGT => ops::sgt(&bctx),
-                    instructions::EQ => ops::eq(&bctx),
-                    instructions::ISZERO => ops::iszero(&bctx),
-                    instructions::AND => ops::and(&bctx),
-                    instructions::OR => ops::or(&bctx),
-                    instructions::XOR => ops::xor(&bctx),
-                    instructions::NOT => ops::not(&bctx),
-                    // instructions::BYTE => ops::byte(&bctx),
-                    instructions::SHL => ops::shl(&bctx),
-                    instructions::SHR => ops::shr(&bctx),
-                    instructions::SAR => ops::sar(&bctx),
-
-                    // Cryptographic
-                    instructions::KECCAK256 => ops::keccak256(&bctx),
-
-                    // Call data
-                    // instructions::CALLVALUE => ops::callvalue(&bctx),
-                    // instructions::CALLDATALOAD => ops::calldataload(&bctx),
-                    // instructions::CALLDATASIZE => ops::calldatasize(&bctx),
-                    // instructions::CALLDATACOPY => ops::calldatacopy(&bctx),
-
-                    // Runtime
-                    instructions::POP => ops::pop(&bctx),
-
-                    instructions::MLOAD => ops::mload(&bctx),
-                    instructions::MSTORE => ops::mstore(&bctx),
-                    instructions::MSTORE8 => ops::mstore8(&bctx),
-
-                    instructions::JUMP => ops::jump(&bctx, jump_block),
-                    instructions::JUMPI => {
-                        if let Some(next_block) = following_block {
-                            ops::jumpi(&bctx, jump_block, next_block.basic_block)
-                        } else {
-                            panic!("JUMPI without following block")
-                        }
-                    }
-
-                    instructions::RETURN => ops::_return(&bctx),
-                    instructions::REVERT => ops::revert(&bctx),
-                    instructions::INVALID => ops::invalid(&bctx),
-                    instructions::SELFDESTRUCT => ops::selfdestruct(&bctx),
-
-                    _ => {
-                        error!("Unknown instruction: {}", current_instruction);
-                        break;
-                    }
-                }?;
-
-                pc += 1;
-            }
+            Self::build_code_block(bctx, code_block, &mut vstack, jump_block, following_block)?;
 
             // If the block terminated due to an instruction, e.g. STOP or RETURN, then it should
             // have taken care of terminating the block and we don't need to do anything else.
@@ -409,12 +309,16 @@ impl<'ctx> ContractBuilder {
             // we will either jump to the next block or return from the function.
             match following_block {
                 Some(next_block) => {
+                    // Sync the vstack with the real stack
+                    // Terminator instructions will handle the stack themselves
+                    ops::__sync_vstack(bctx, &mut vstack)?;
+
                     bctx.builder
                         .build_unconditional_branch(next_block.basic_block)
                         .unwrap();
                     Ok(())
                 }
-                None => ops::__build_return(bctx, ReturnCode::ImplicitReturn),
+                None => ops::__build_return(bctx, &mut vstack, ReturnCode::ImplicitReturn),
             }?;
         }
 
@@ -423,10 +327,125 @@ impl<'ctx> ContractBuilder {
             Self::build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
         } else {
             bctx.builder.position_at_end(jump_block);
-            ops::__invalid_jump_return(bctx)?;
+            ops::__invalid_jump_return(bctx, &mut vstack)?;
         }
 
         return Ok(());
+    }
+
+    fn build_code_block<'b>(
+        bctx: &BuildCtx<'ctx, 'b>,
+        code_block: &CodeBlock,
+        mut vstack: &mut Vec<IntValue<'ctx>>,
+        jump_block: BasicBlock,
+        following_block: Option<&&CodeBlock>,
+    ) -> Result<(), BuildError> {
+        trace!("loop: Building code");
+        trace!("loop: Offset: {}", code_block.offset);
+        trace!("loop: ROM: {:?}", code_block.rom);
+
+        // Prepare for building the IR for this code block. Move the builder to this basic block
+        // and start a relative PC at 0.
+        bctx.builder.position_at_end(code_block.basic_block);
+
+        let mut pc = 0;
+        let bytecode = code_block.rom;
+        while pc < bytecode.len() {
+            let current_instruction = bytecode[pc];
+            trace!("loop:     PC: {}", pc);
+            trace!("loop:     Instruction: {}", current_instruction);
+
+            // Handle PUSH<n> instructions
+            if current_instruction >= instructions::PUSH1
+                && current_instruction <= instructions::PUSH32
+            {
+                let byte_count = (current_instruction - instructions::PUSH1 + 1) as usize;
+                trace!(
+                    "PUSH{} at {} ({}..{})",
+                    byte_count,
+                    pc,
+                    pc + 1,
+                    pc + byte_count + 1
+                );
+                trace!("{:?}", &bytecode);
+                // trace!("  {:?}", &bytecode[pc + 1..(pc + byte_count + 1)]);
+                ops::push(bctx, &mut vstack, &bytecode[pc + 1..(pc + byte_count + 1)])?;
+                pc += 1 + byte_count;
+                continue;
+            }
+
+            // Handle remaining instructions
+            match current_instruction {
+                instructions::STOP => ops::stop(bctx, &mut vstack),
+
+                // Arithmetic
+                instructions::ADD => ops::add(bctx, &mut vstack),
+                instructions::MUL => ops::mul(bctx, &mut vstack),
+                instructions::SUB => ops::sub(bctx, &mut vstack),
+                instructions::DIV => ops::div(bctx, &mut vstack),
+                instructions::SDIV => ops::sdiv(bctx, &mut vstack),
+                instructions::MOD => ops::_mod(bctx, &mut vstack),
+                instructions::SMOD => ops::smod(bctx, &mut vstack),
+                instructions::ADDMOD => ops::addmod(bctx, &mut vstack),
+                instructions::MULMOD => ops::mulmod(bctx, &mut vstack),
+                instructions::EXP => ops::exp(&bctx),
+                instructions::SIGNEXTEND => ops::signextend(&bctx),
+
+                // Comparisons
+                instructions::LT => ops::lt(bctx, &mut vstack),
+                instructions::GT => ops::gt(bctx, &mut vstack),
+                instructions::SLT => ops::slt(bctx, &mut vstack),
+                instructions::SGT => ops::sgt(bctx, &mut vstack),
+                instructions::EQ => ops::eq(bctx, &mut vstack),
+                instructions::ISZERO => ops::iszero(bctx, &mut vstack),
+                instructions::AND => ops::and(bctx, &mut vstack),
+                instructions::OR => ops::or(bctx, &mut vstack),
+                instructions::XOR => ops::xor(bctx, &mut vstack),
+                instructions::NOT => ops::not(bctx, &mut vstack),
+                // instructions::BYTE => ops::byte(&bctx),
+                instructions::SHL => ops::shl(bctx, &mut vstack),
+                instructions::SHR => ops::shr(bctx, &mut vstack),
+                instructions::SAR => ops::sar(bctx, &mut vstack),
+
+                // Cryptographic
+                instructions::KECCAK256 => ops::keccak256(&bctx, &mut vstack),
+
+                // Call data
+                // instructions::CALLVALUE => ops::callvalue(&bctx),
+                // instructions::CALLDATALOAD => ops::calldataload(&bctx),
+                // instructions::CALLDATASIZE => ops::calldatasize(&bctx),
+                // instructions::CALLDATACOPY => ops::calldatacopy(&bctx),
+
+                // Runtime
+                instructions::POP => ops::pop(bctx, &mut vstack),
+
+                instructions::MLOAD => ops::mload(bctx, &mut vstack),
+                instructions::MSTORE => ops::mstore(bctx, &mut vstack),
+                instructions::MSTORE8 => ops::mstore8(bctx, &mut vstack),
+
+                instructions::JUMP => ops::jump(bctx, &mut vstack, jump_block),
+                instructions::JUMPI => {
+                    if let Some(next_block) = following_block {
+                        ops::jumpi(bctx, &mut vstack, jump_block, next_block.basic_block)
+                    } else {
+                        panic!("JUMPI without following block")
+                    }
+                }
+
+                instructions::RETURN => ops::_return(bctx, &mut vstack),
+                instructions::REVERT => ops::revert(bctx, &mut vstack),
+                instructions::INVALID => ops::invalid(bctx, &mut vstack),
+                instructions::SELFDESTRUCT => ops::selfdestruct(&bctx, &mut vstack),
+
+                _ => {
+                    error!("Unknown instruction: {}", current_instruction);
+                    break;
+                }
+            }?;
+
+            pc += 1;
+        }
+        Ok(())
     }
 
     fn build_jump_table(

@@ -29,7 +29,7 @@ rom_tests! {
         ],
         expected: TestContractRun {
             stack_ptr: 1,
-            jump_pointer: 3,
+            jump_ptr: 3,
             stack: vec![stack_word(&[42])],
             ..Default::default()
         },
@@ -58,6 +58,28 @@ rom_tests! {
         expected: TestContractRun {
             stack_ptr: 2,
             stack: vec![stack_word(&[0x00, 0x00, 0xFF]), stack_word(&[0xFF, 0x00, 0xFF])],
+            ..Default::default()
+        },
+    },
+
+    vstack_accesses_real_stack_after_jump: Test{
+        rom: vec![
+            jet::instructions::PUSH1,
+            0x01,
+            jet::instructions::PUSH1,
+            0x02,
+            jet::instructions::PUSH1,
+            0x07,
+            jet::instructions::JUMP,
+            jet::instructions::JUMPDEST,
+            jet::instructions::ADD,
+            jet::instructions::PUSH1,
+            42,
+        ],
+        expected: TestContractRun {
+            stack_ptr: 2,
+            jump_ptr: 7,
+            stack: vec![stack_word(&[0x03]), stack_word(&[0x2A])],
             ..Default::default()
         },
     }

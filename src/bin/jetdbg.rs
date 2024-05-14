@@ -77,34 +77,39 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    // let test_rom = &vec![
-    //     jet::instructions::PUSH1,
-    //     0x03,
-    //     jet::instructions::JUMP,
-    //     jet::instructions::JUMPDEST,
-    //     jet::instructions::PUSH1,
-    //     42,
-    // ];
-
     let test_rom = &vec![
         jet::instructions::PUSH1,
-        0xFF,
+        0x01,
         jet::instructions::PUSH1,
         0x02,
-        jet::instructions::MSTORE,
         jet::instructions::PUSH1,
-        0x00,
-        jet::instructions::MLOAD,
-        jet::instructions::PUSH2,
-        0xFF,
-        0xFF,
+        0x07,
+        jet::instructions::JUMP,
+        jet::instructions::JUMPDEST,
+        jet::instructions::ADD,
         jet::instructions::PUSH1,
-        0x00,
-        jet::instructions::MSTORE8,
-        jet::instructions::PUSH1,
-        0x00,
-        jet::instructions::MLOAD,
+        42,
     ];
+
+    // let test_rom = &vec![
+    //     jet::instructions::PUSH1,
+    //     0xFF,
+    //     jet::instructions::PUSH1,
+    //     0x02,
+    //     jet::instructions::MSTORE,
+    //     jet::instructions::PUSH1,
+    //     0x00,
+    //     jet::instructions::MLOAD,
+    //     jet::instructions::PUSH2,
+    //     0xFF,
+    //     0xFF,
+    //     jet::instructions::PUSH1,
+    //     0x00,
+    //     jet::instructions::MSTORE8,
+    //     jet::instructions::PUSH1,
+    //     0x00,
+    //     jet::instructions::MLOAD,
+    // ];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
