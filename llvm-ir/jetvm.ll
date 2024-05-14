@@ -45,43 +45,6 @@ target triple = "x86_64-apple-macosx14.0.0"
 }>
 %call_info_t = type <{}>
 
-@exec_ctx_stack_idx = constant i32 4
-; @exec_ctx_stack_idx = global i32 4
-
-declare void @_keccak256( [32 x i8]*, [32 x i8]*)
-
-
-; define [32 x i8]* @_call_keccak256(i8* %input){
-; entry:
-;   %result = alloca [32 x i8]
-
-;   call void @_keccak256(i8* %input, i8* %result)
-
-;   ret [32 x i8]* %result
-; }
-
-
-; define i256 @_call_keccak256(i8* %input){
-; entry:
-;   %result = alloca [32 x i8]
-
-;   call void @_keccak256(i8* %input, i8* %result)
-;   %result_word = load i256, ptr %result, align 8
-
-;   ret i256 %result_word
-; }
-
-
-define i256 @_call_keccak256(i256* %input_ptr){
-entry:
-  %result = alloca [32 x i8]
-
-  %input_cast = bitcast i256* %input_ptr to [32 x i8]*
-  call void @_keccak256([32 x i8]* %input_cast,  [32 x i8]* %result)
-  %result_word = load i256, ptr %result, align 8
-
-  ret i256 %result_word
-}
 
 ; stack_push_word pushes a word onto the stack and increments the stack pointer.
 ; Returns true if the operation was successful, false if the stack is full.
@@ -110,11 +73,8 @@ entry:
 define i1 @stack_push_bytes (%exec_ctx_t*, [32 x i8]) {
 entry:
   ; Cast byte array to word
-  ; %stack_word = bitcast [32 x i8]* %1 to i256
-
   %stack_bytes_ptr = alloca [32 x i8]
   store [32 x i8] %1, [32 x i8]* %stack_bytes_ptr
-
   %stack_word = load i256, ptr %stack_bytes_ptr, align 8
 
   ; Call stack_push_word
