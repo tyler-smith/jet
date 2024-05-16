@@ -77,45 +77,52 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    let test_rom = &vec![
-        jet::instructions::PUSH1,
-        0x01,
-        jet::instructions::PUSH1,
-        0x02,
-        jet::instructions::PUSH1,
-        0x07,
-        jet::instructions::JUMP,
-        jet::instructions::JUMPDEST,
-        jet::instructions::ADD,
-        jet::instructions::PUSH1,
-        42,
-    ];
-
     // let test_rom = &vec![
     //     jet::instructions::PUSH1,
-    //     0xFF,
+    //     0x01,
     //     jet::instructions::PUSH1,
     //     0x02,
-    //     jet::instructions::MSTORE,
     //     jet::instructions::PUSH1,
-    //     0x00,
-    //     jet::instructions::MLOAD,
-    //     jet::instructions::PUSH2,
-    //     0xFF,
-    //     0xFF,
+    //     0x07,
+    //     jet::instructions::JUMP,
+    //     jet::instructions::JUMPDEST,
+    //     jet::instructions::ADD,
     //     jet::instructions::PUSH1,
-    //     0x00,
-    //     jet::instructions::MSTORE8,
-    //     jet::instructions::PUSH1,
-    //     0x00,
-    //     jet::instructions::MLOAD,
+    //     42,
     // ];
+
+    let alice_rom = &vec![
+        jet::instructions::PUSH2,
+        0x56,
+        0x78,
+        jet::instructions::CALL,
+    ];
+
+    let bob_rom = &vec![
+        jet::instructions::PUSH1,
+        0xFF,
+        // jet::instructions::PUSH1,
+        // 0x01,
+        // jet::instructions::MSTORE,
+        // jet::instructions::PUSH1,
+        // 0xFF,
+        // jet::instructions::PUSH1,
+        // 0x1F,
+        // jet::instructions::MSTORE8,
+        // jet::instructions::PUSH1,
+        // 0x20,
+        // jet::instructions::PUSH1,
+        // 0x00,
+        // jet::instructions::RETURN,
+    ];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
-    engine.build_contract("0x1234", test_rom)?;
+    engine.build_contract("0x1234", alice_rom)?;
+    engine.build_contract("0x5678", bob_rom)?;
     let run = engine.run_contract("0x1234")?;
+    // let run = engine.run_contract("0x1234")?;
     info!("{}", run);
 
     Ok(())

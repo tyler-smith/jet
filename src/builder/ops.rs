@@ -16,7 +16,7 @@ pub(crate) fn __call_stack_push_word<'ctx, 'b>(
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
     bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_push_word(),
+        bctx.env.runtime_vals().stack_push_word(),
         &[bctx.registers.exec_ctx.into(), value],
         "stack_push_word",
     )
@@ -28,7 +28,7 @@ fn __call_stack_push_bytes<'ctx, 'b>(
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
     bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_push_bytes(),
+        bctx.env.runtime_vals().stack_push_bytes(),
         &[bctx.registers.exec_ctx.into(), value],
         "stack_push_bytes",
     )
@@ -36,7 +36,7 @@ fn __call_stack_push_bytes<'ctx, 'b>(
 
 fn __call_stack_pop<'ctx, 'b>(bctx: &BuildCtx<'ctx, 'b>) -> Result<IntValue<'ctx>, BuildError> {
     let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.runtime_fns().stack_pop_word(),
+        bctx.env.runtime_vals().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_a",
     )?;
@@ -191,6 +191,92 @@ fn __stack_pop_3<'ctx, 'b>(
     let c = unsafe { IntValue::new(c.as_value_ref()) };
 
     Ok((a, b, c))
+}
+
+fn __stack_pop_7<'ctx, 'b>(
+    bctx: &BuildCtx<'ctx, 'b>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+) -> Result<
+    (
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+        IntValue<'ctx>,
+    ),
+    BuildError,
+> {
+    if bctx.env.opts().vstack() {
+        let a = match vstack.pop() {
+            Some(a) => {
+                trace!("Popping from vstack: {:?}", a);
+                a
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let b = match vstack.pop() {
+            Some(b) => {
+                trace!("Popping from vstack: {:?}", b);
+                b
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let c = match vstack.pop() {
+            Some(c) => {
+                trace!("Popping from vstack: {:?}", c);
+                c
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let d = match vstack.pop() {
+            Some(c) => {
+                trace!("Popping from vstack: {:?}", c);
+                c
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let e = match vstack.pop() {
+            Some(c) => {
+                trace!("Popping from vstack: {:?}", c);
+                c
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let f = match vstack.pop() {
+            Some(c) => {
+                trace!("Popping from vstack: {:?}", c);
+                c
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        let g = match vstack.pop() {
+            Some(c) => {
+                trace!("Popping from vstack: {:?}", c);
+                c
+            }
+            None => __call_stack_pop(bctx)?,
+        };
+        return Ok((a, b, c, d, e, f, g));
+    }
+
+    let a = __call_stack_pop(bctx)?;
+    let b = __call_stack_pop(bctx)?;
+    let c = __call_stack_pop(bctx)?;
+    let d = __call_stack_pop(bctx)?;
+    let e = __call_stack_pop(bctx)?;
+    let f = __call_stack_pop(bctx)?;
+    let g = __call_stack_pop(bctx)?;
+    let a = unsafe { IntValue::new(a.as_value_ref()) };
+    let b = unsafe { IntValue::new(b.as_value_ref()) };
+    let c = unsafe { IntValue::new(c.as_value_ref()) };
+    let d = unsafe { IntValue::new(d.as_value_ref()) };
+    let e = unsafe { IntValue::new(e.as_value_ref()) };
+    let f = unsafe { IntValue::new(f.as_value_ref()) };
+    let g = unsafe { IntValue::new(g.as_value_ref()) };
+
+    Ok((a, b, c, d, e, f, g))
 }
 
 pub(crate) fn __invalid_jump_return<'ctx, 'b>(
@@ -539,7 +625,7 @@ pub(crate) fn mload<'ctx, 'b>(
 ) -> Result<(), BuildError> {
     let loc = __stack_pop_1(bctx, vstack)?;
     let ret = bctx.builder.build_call(
-        bctx.env.runtime_fns().mload(),
+        bctx.env.runtime_vals().mload(),
         &[bctx.registers.exec_ctx.into(), loc.into()],
         "mload",
     )?;
@@ -556,7 +642,7 @@ pub(crate) fn mstore<'ctx, 'b>(
 ) -> Result<(), BuildError> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
-        bctx.env.runtime_fns().mstore(),
+        bctx.env.runtime_vals().mstore(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore",
     )?;
@@ -569,7 +655,7 @@ pub(crate) fn mstore8<'ctx, 'b>(
 ) -> Result<(), BuildError> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
-        bctx.env.runtime_fns().mstore8(),
+        bctx.env.runtime_vals().mstore8(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore8",
     )?;
@@ -611,10 +697,61 @@ pub(crate) fn jumpi<'ctx, 'b>(
     Ok(())
 }
 
+pub(crate) fn call<'ctx, 'b>(
+    bctx: &BuildCtx<'ctx, 'b>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+) -> Result<(), BuildError> {
+    // let (gas, to, value, in_off, in_len, out_off, out_len) = __stack_pop_7(bctx)?;
+
+    let zero = bctx.env.types().word.const_zero();
+    let ret = bctx.builder.build_call(
+        bctx.env.runtime_vals().contract_new_ctx(),
+        &[
+            bctx.registers.exec_ctx.into(),
+            zero.into(),
+            zero.into(),
+            zero.into(),
+            zero.into(),
+            zero.into(),
+            zero.into(),
+        ],
+        "call_ctx",
+    )?;
+    let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(ret.as_value_ref()) };
+
+    let to = __stack_pop_1(bctx, vstack)?;
+    let to = bctx
+        .builder
+        .build_int_truncate(to, bctx.env.types().i32, "call_to")?;
+
+    let contract_call_fn = bctx.env.runtime_vals().contract_call();
+    let make_contract_call = bctx.builder.build_call(
+        contract_call_fn,
+        &[to.into(), call_ctx_ptr.into()],
+        "contract_call",
+    )?;
+
+    let ret = unsafe { IntValue::new(make_contract_call.as_value_ref()) };
+    let ret = bctx
+        .builder
+        .build_int_z_extend(ret, bctx.env.types().word, "call_result")?;
+
+    __stack_push_word(bctx, vstack, ret)?;
+
+    Ok(())
+}
+
 pub(crate) fn _return<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
+    let (offset, size) = __stack_pop_2(bctx, vstack)?;
+
+    bctx.builder
+        .build_store(bctx.registers.return_offset, offset)?;
+    bctx.builder
+        .build_store(bctx.registers.return_length, size)?;
+
     __build_return(bctx, vstack, ReturnCode::ExplicitReturn)
 }
 

@@ -1,3 +1,4 @@
+use jet::runtime::ReturnCode;
 use roms::*;
 
 mod roms;
@@ -80,6 +81,22 @@ rom_tests! {
             stack_ptr: 2,
             jump_ptr: 7,
             stack: vec![stack_word(&[0x03]), stack_word(&[0x2A])],
+            ..Default::default()
+        },
+    },
+
+    return_sets_offset_and_length: Test{
+        rom: vec![
+            jet::instructions::PUSH1,
+            0x20,
+            jet::instructions::PUSH1,
+            0x03,
+            jet::instructions::RETURN,
+        ],
+        expected: TestContractRun {
+            result: ReturnCode::ExplicitReturn,
+            return_offset: 0x03,
+            return_length: 0x20,
             ..Default::default()
         },
     }

@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::runtime::*;
 
-pub type Result = i8;
+// pub type Result = i8;
 
 #[repr(C)]
 pub struct Memory {
@@ -117,17 +117,17 @@ impl fmt::Display for Context {
 }
 
 pub struct ContractRun {
-    result: Result,
+    result: ReturnCode,
     ctx: Context,
 }
 
 impl ContractRun {
-    pub fn new(result: Result, ctx: Context) -> Self {
+    pub fn new(result: ReturnCode, ctx: Context) -> Self {
         ContractRun { result, ctx }
     }
 
-    pub fn result(&self) -> Result {
-        self.result
+    pub fn result(&self) -> ReturnCode {
+        self.result.clone()
     }
 
     pub fn ctx(&self) -> &Context {
@@ -137,8 +137,8 @@ impl ContractRun {
 
 impl fmt::Display for ContractRun {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ContractRun:\nResult: {}\n{}", self.result, self.ctx)
+        write!(f, "ContractRun:\nResult: {:?}\n{}", self.result, self.ctx)
     }
 }
 
-pub type ContractFunc = unsafe extern "C" fn(*const Context) -> Result;
+pub type ContractFunc = unsafe extern "C" fn(*const Context) -> ReturnCode;

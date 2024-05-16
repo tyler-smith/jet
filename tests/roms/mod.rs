@@ -3,7 +3,7 @@ use inkwell::context::Context;
 use jet::builder::env::Mode::Debug;
 use jet::builder::env::Options;
 use jet::builder::errors::BuildError;
-use jet::runtime::exec;
+use jet::runtime::{exec, ReturnCode};
 
 #[macro_export]
 macro_rules! rom_tests {
@@ -34,7 +34,7 @@ pub(crate) struct Test {
 
 #[derive(Default)]
 pub(crate) struct TestContractRun {
-    pub(crate) result: i8,
+    pub(crate) result: ReturnCode,
     pub(crate) stack_ptr: u32,
     pub(crate) jump_ptr: u32,
     pub(crate) return_offset: u32,

@@ -3,7 +3,7 @@ use std::str::FromStr;
 use inkwell::AddressSpace;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::FunctionValue;
+use inkwell::values::{FunctionValue, GlobalValue};
 
 use crate::runtime;
 use crate::runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS};
@@ -148,33 +148,57 @@ impl<'ctx> Types<'ctx> {
     }
 }
 
-pub(crate) struct RuntimeFns<'ctx> {
+pub(crate) struct RuntimeValues<'ctx> {
+    jit_engine: GlobalValue<'ctx>,
+
     stack_push_bytes: FunctionValue<'ctx>,
     stack_push_word: FunctionValue<'ctx>,
     stack_pop_word: FunctionValue<'ctx>,
+
     memory_store_word: FunctionValue<'ctx>,
     memory_store_byte: FunctionValue<'ctx>,
     memory_load_word: FunctionValue<'ctx>,
+
+    contract_lookup: FunctionValue<'ctx>,
+    contract_new_ctx: FunctionValue<'ctx>,
+    contract_call: FunctionValue<'ctx>,
 }
 
-impl<'ctx> RuntimeFns<'ctx> {
+impl<'ctx> RuntimeValues<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
+        let jit_engine = module.get_global(runtime::GLOBAL_JIT_ENGINE)?;
+
         let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
         let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
         let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP_WORD)?;
 
-        let memory_store_word = module.get_function(runtime::FN_NAME_MEMORY_STORE_WORD)?;
-        let memory_store_byte = module.get_function(runtime::FN_NAME_MEMORY_STORE_BYTE)?;
-        let memory_load_word = module.get_function(runtime::FN_NAME_MEMORY_LOAD_WORD)?;
+        let memory_store_word = module.get_function(runtime::FN_NAME_MEM_STORE_WORD)?;
+        let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
+        let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD_WORD)?;
+
+        let contract_new_ctx = module.get_function(runtime::FN_NAME_CONTRACT_NEW_CTX)?;
+        let contract_lookup = module.get_function(runtime::FN_NAME_CONTRACT_LOOKUP)?;
+        let contract_call = module.get_function(runtime::FN_NAME_CONTRACT_CALL)?;
 
         Some(Self {
+            jit_engine,
+
             stack_push_bytes,
             stack_push_word,
             stack_pop_word,
+
             memory_store_word,
             memory_store_byte,
             memory_load_word,
+
+            contract_new_ctx,
+            contract_lookup,
+            contract_call,
         })
+    }
+
+    pub(crate) fn jit_engine(&self) -> GlobalValue<'ctx> {
+        self.jit_engine
     }
 
     pub(crate) fn stack_push_bytes(&self) -> FunctionValue<'ctx> {
@@ -200,6 +224,18 @@ impl<'ctx> RuntimeFns<'ctx> {
     pub(crate) fn mload(&self) -> FunctionValue<'ctx> {
         self.memory_load_word
     }
+
+    pub(crate) fn contract_new_ctx(&self) -> FunctionValue<'ctx> {
+        self.contract_new_ctx
+    }
+
+    pub(crate) fn contract_lookup(&self) -> FunctionValue<'ctx> {
+        self.contract_lookup
+    }
+
+    pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
+        self.contract_call
+    }
 }
 
 pub struct Env<'ctx> {
@@ -209,13 +245,13 @@ pub struct Env<'ctx> {
     module: Module<'ctx>,
 
     types: Types<'ctx>,
-    runtime_fns: RuntimeFns<'ctx>,
+    runtime_vals: RuntimeValues<'ctx>,
 }
 
 impl<'ctx> Env<'ctx> {
     pub fn new(context: &'ctx Context, module: Module<'ctx>, opts: Options) -> Self {
         let types = Types::new(context);
-        let runtime_fns = RuntimeFns::new(&module);
+        let runtime_fns = RuntimeValues::new(&module);
 
         if runtime_fns.is_none() {
             panic!("Failed to load all runtime functions");
@@ -228,7 +264,7 @@ impl<'ctx> Env<'ctx> {
             module,
 
             types,
-            runtime_fns: runtime_fns.unwrap(),
+            runtime_vals: runtime_fns.unwrap(),
         }
     }
 
@@ -248,7 +284,7 @@ impl<'ctx> Env<'ctx> {
         &self.types
     }
 
-    pub(crate) fn runtime_fns(&self) -> &RuntimeFns<'ctx> {
-        &self.runtime_fns
+    pub(crate) fn runtime_vals(&self) -> &RuntimeValues<'ctx> {
+        &self.runtime_vals
     }
 }

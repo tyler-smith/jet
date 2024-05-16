@@ -14,8 +14,8 @@ pub(crate) struct Registers<'ctx> {
     pub(crate) exec_ctx: inkwell::values::PointerValue<'ctx>,
     // pub(crate) stack_ptr: inkwell::values::PointerValue<'ctx>,
     pub(crate) jump_ptr: inkwell::values::PointerValue<'ctx>,
-    // pub(crate) return_offset: inkwell::values::PointerValue<'ctx>,
-    // pub(crate) return_length: inkwell::values::PointerValue<'ctx>,
+    pub(crate) return_offset: inkwell::values::PointerValue<'ctx>,
+    pub(crate) return_length: inkwell::values::PointerValue<'ctx>,
 }
 
 impl<'ctx> Registers<'ctx> {
@@ -35,21 +35,21 @@ impl<'ctx> Registers<'ctx> {
             .build_struct_gep(t.exec_ctx, exec_ctx, 1, "jump_ptr")
             .unwrap()
             .into();
-        // let return_offset = builder
-        //     .build_struct_gep(t.exec_ctx, exec_ctx, 2, "return_offset")
-        //     .unwrap()
-        //     .into();
-        // let return_length = builder
-        //     .build_struct_gep(t.exec_ctx, exec_ctx, 3, "return_length")
-        //     .unwrap()
-        //     .into();
+        let return_offset = builder
+            .build_struct_gep(t.exec_ctx, exec_ctx, 2, "return_offset")
+            .unwrap()
+            .into();
+        let return_length = builder
+            .build_struct_gep(t.exec_ctx, exec_ctx, 3, "return_length")
+            .unwrap()
+            .into();
 
         Self {
             exec_ctx,
             // stack_ptr,
             jump_ptr,
-            // return_offset,
-            // return_length,
+            return_offset,
+            return_length,
         }
     }
 }
@@ -431,6 +431,8 @@ impl<'ctx> ContractBuilder {
                         panic!("JUMPI without following block")
                     }
                 }
+
+                instructions::CALL => ops::call(bctx, &mut vstack),
 
                 instructions::RETURN => ops::_return(bctx, &mut vstack),
                 instructions::REVERT => ops::revert(bctx, &mut vstack),

@@ -8,17 +8,24 @@ pub const STACK_SIZE_WORDS: u32 = 1024;
 // Runtime memory
 pub const MEMORY_INITIAL_SIZE_WORDS: u32 = 1024;
 
+// Globals
+pub const GLOBAL_JIT_ENGINE: &str = "jetvm.jit_engine";
+
 // Function names
 pub const FN_NAME_CONTRACT_PREFIX: &str = "jetvm_contract_";
 pub const FN_NAME_EXEC_CTX_CTOR: &'static str = "exec_ctx_ctor";
-pub const FN_NAME_STACK_PUSH_WORD: &'static str = "stack_push_word";
-pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "stack_push_bytes";
-pub const FN_NAME_STACK_POP_WORD: &'static str = "stack_pop_word";
-pub const FN_NAME_STACK_PEEK_WORD: &'static str = "stack_peek_word";
-pub const FN_NAME_MEMORY_STORE_WORD: &'static str = "memory_store_word";
-pub const FN_NAME_MEMORY_STORE_BYTE: &'static str = "memory_store_byte";
-pub const FN_NAME_MEMORY_LOAD_WORD: &'static str = "memory_load_word";
-pub const FN_NAME_KECCAK256: &'static str = "_call_keccak256";
+
+pub const FN_NAME_STACK_PUSH_WORD: &'static str = "jetvm.stack.push_word";
+pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "jetvm.stack.push_bytes";
+pub const FN_NAME_STACK_POP_WORD: &'static str = "jetvm.stack.pop";
+
+pub const FN_NAME_MEM_STORE_WORD: &'static str = "jetvm.mem.store_word";
+pub const FN_NAME_MEM_STORE_BYTE: &'static str = "jetvm.mem.store_byte";
+pub const FN_NAME_MEM_LOAD_WORD: &'static str = "jetvm.mem.load_word";
+
+pub const FN_NAME_CONTRACT_NEW_CTX: &'static str = "jetvm.contracts.new_ctx";
+pub const FN_NAME_CONTRACT_LOOKUP: &'static str = "jetvm.contracts.lookup";
+pub const FN_NAME_CONTRACT_CALL: &'static str = "jetvm.contracts.call";
 
 pub fn mangle_contract_fn(address: &str) -> String {
     format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)
@@ -29,9 +36,10 @@ pub fn mangle_contract_fn(address: &str) -> String {
 // - Positive values are successfully captured EVM-returns.
 // - Positive values below 64 are EVM-level successes.
 // - Positive values above 64 are EVM-level failures.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 #[repr(i8)]
 pub enum ReturnCode {
+    #[default]
     ImplicitReturn = 0,
     ExplicitReturn = 1,
     Stop = 2,
