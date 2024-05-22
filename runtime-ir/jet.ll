@@ -153,12 +153,10 @@ entry:
   %callee_offset_i32 = trunc i256 %callee_offset to i32
 
   %caller_mem = getelementptr inbounds %jet.types.exec_ctx, ptr %caller_ctx, i32 0, i32 5
-  %caller_mem_buf_ptr = getelementptr inbounds %jet.types.mem, ptr %caller_mem, i32 0, i32 0
-  %caller_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %caller_mem_buf_ptr, i32 0, i32 %caller_offset_i32
+  %caller_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %caller_mem, i32 0, i32 %caller_offset_i32
 
   %callee_mem = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 5
-  %callee_mem_buf_ptr = getelementptr inbounds %jet.types.mem, ptr %callee_mem, i32 0, i32 0
-  %callee_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %callee_mem_buf_ptr, i32 0, i32 %callee_offset_i32
+  %callee_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %callee_mem, i32 0, i32 %callee_offset_i32
 
   %copy_len_i32 = trunc i256 %copy_len to i32
   call void @llvm.memcpy.p0.p0.i32(ptr %caller_mem_loc_ptr, ptr %callee_mem_loc_ptr, i32 %copy_len_i32, i1 false)
