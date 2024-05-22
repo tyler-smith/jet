@@ -117,8 +117,7 @@ entry:
   %loc_i32 = trunc i256 %loc to i32
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 5
-  %mem_buf_ptr = getelementptr inbounds %jet.types.mem, ptr %mem, i32 0, i32 0
-  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
 
   store i256 %val, ptr %mem_loc_ptr, align 1
 
@@ -131,8 +130,7 @@ entry:
   %val_i8 = trunc i256 %val to i8
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 5
-  %mem_buf_ptr = getelementptr inbounds %jet.types.mem, ptr %mem, i32 0, i32 0
-  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
 
   store i8 %val_i8, ptr %mem_loc_ptr, align 1
   ret i8 0
@@ -143,8 +141,7 @@ entry:
   %loc_i32 = trunc i256 %loc to i32
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 5
-  %mem_buf_ptr = getelementptr inbounds %jet.types.mem, ptr %mem, i32 0, i32 0
-  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem_buf_ptr, i32 0, i32 %loc_i32
+  %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
 
   %val = load i256, ptr %mem_loc_ptr, align 1
   ret i256 %val
