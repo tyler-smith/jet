@@ -2,8 +2,6 @@ use std::fmt;
 
 use crate::runtime::*;
 
-// pub type Result = i8;
-
 #[repr(C)]
 pub struct Memory {
     buf: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
