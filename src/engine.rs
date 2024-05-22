@@ -12,38 +12,40 @@ use crate::builder::env;
 use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
+use crate::runtime;
 use crate::runtime::exec;
 use crate::runtime::exec::ContractFunc;
-
-// extern "C" fn contract_fn_lookup(a: i32) -> i32 {
-//     return a;
-// }
 
 extern "C" fn contract_fn_lookup(
     jit_engine: *const ExecutionEngine,
     out: *mut usize,
-    _a: i32,
+    addr: usize,
 ) -> i8 {
-    // return 42;
-    let ee = unsafe { &*jit_engine };
-    let ptr_lookup = ee.get_function_address("jetvm_contract_0x5678");
+    // Convert the address to a function name
+    let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, 2) };
+    let mut addr_str = "0x".to_owned();
+    addr_str.push_str(&hex::encode(addr_slice));
+    let fn_name = runtime::mangle_contract_fn(addr_str.as_str());
 
+    // Look up the function pointer
+    let ee = unsafe { &*jit_engine };
+    let ptr_lookup = ee.get_function_address(fn_name.as_str());
     let ptr = match ptr_lookup {
         Ok(ptr) => ptr,
         Err(e) => {
             error!("Error looking up contract function: {}", e);
-            return -1;
+            return 1;
         }
     };
 
+    // Write the function pointer to the output buffer and return success
     unsafe {
         *out = ptr;
     }
     return 0;
 }
-// extern "C" fn contract_fn_lookup() {}
 
-const RUNTIME_IR_FILE: &str = "llvm-ir/jetvm.ll";
+const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
 pub struct Engine<'ctx> {
     build_manager: Manager<'ctx>,

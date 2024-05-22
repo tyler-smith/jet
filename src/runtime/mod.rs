@@ -9,23 +9,23 @@ pub const STACK_SIZE_WORDS: u32 = 1024;
 pub const MEMORY_INITIAL_SIZE_WORDS: u32 = 1024;
 
 // Globals
-pub const GLOBAL_JIT_ENGINE: &str = "jetvm.jit_engine";
+pub const GLOBAL_NAME_JIT_ENGINE: &str = "jet.jit_engine";
 
 // Function names
-pub const FN_NAME_CONTRACT_PREFIX: &str = "jetvm_contract_";
-pub const FN_NAME_EXEC_CTX_CTOR: &'static str = "exec_ctx_ctor";
+pub const FN_NAME_CONTRACT_PREFIX: &str = "jet.contracts.";
+// pub const FN_NAME_EXEC_CTX_CTOR: &'static str = "exec_ctx_ctor";
 
-pub const FN_NAME_STACK_PUSH_WORD: &'static str = "jetvm.stack.push_word";
-pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "jetvm.stack.push_bytes";
-pub const FN_NAME_STACK_POP_WORD: &'static str = "jetvm.stack.pop";
+pub const FN_NAME_STACK_PUSH_WORD: &'static str = "jet.stack.push.word";
+pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "jet.stack.push.bytes";
+pub const FN_NAME_STACK_POP: &'static str = "jet.stack.pop";
 
-pub const FN_NAME_MEM_STORE_WORD: &'static str = "jetvm.mem.store_word";
-pub const FN_NAME_MEM_STORE_BYTE: &'static str = "jetvm.mem.store_byte";
-pub const FN_NAME_MEM_LOAD_WORD: &'static str = "jetvm.mem.load_word";
+pub const FN_NAME_MEM_STORE_WORD: &'static str = "jet.mem.store.word";
+pub const FN_NAME_MEM_STORE_BYTE: &'static str = "jet.mem.store.byte";
+pub const FN_NAME_MEM_LOAD: &'static str = "jet.mem.load";
 
-pub const FN_NAME_CONTRACT_NEW_CTX: &'static str = "jetvm.contracts.new_ctx";
-pub const FN_NAME_CONTRACT_LOOKUP: &'static str = "jetvm.contracts.lookup";
-pub const FN_NAME_CONTRACT_CALL: &'static str = "jetvm.contracts.call";
+pub const FN_NAME_CONTRACT_NEW_SUB_CTX: &'static str = "jet.contracts.new_sub_ctx";
+pub const FN_NAME_CONTRACT_LOOKUP: &'static str = "jet.contracts.lookup";
+pub const FN_NAME_CONTRACT_CALL: &'static str = "jet.contracts.call";
 
 pub fn mangle_contract_fn(address: &str) -> String {
     format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)

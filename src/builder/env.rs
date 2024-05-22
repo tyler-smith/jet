@@ -166,17 +166,17 @@ pub(crate) struct RuntimeValues<'ctx> {
 
 impl<'ctx> RuntimeValues<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
-        let jit_engine = module.get_global(runtime::GLOBAL_JIT_ENGINE)?;
+        let jit_engine = module.get_global(runtime::GLOBAL_NAME_JIT_ENGINE)?;
 
         let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
         let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
-        let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP_WORD)?;
+        let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP)?;
 
         let memory_store_word = module.get_function(runtime::FN_NAME_MEM_STORE_WORD)?;
         let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
-        let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD_WORD)?;
+        let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD)?;
 
-        let contract_new_ctx = module.get_function(runtime::FN_NAME_CONTRACT_NEW_CTX)?;
+        let contract_new_ctx = module.get_function(runtime::FN_NAME_CONTRACT_NEW_SUB_CTX)?;
         let contract_lookup = module.get_function(runtime::FN_NAME_CONTRACT_LOOKUP)?;
         let contract_call = module.get_function(runtime::FN_NAME_CONTRACT_CALL)?;
 

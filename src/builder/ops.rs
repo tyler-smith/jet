@@ -702,7 +702,9 @@ pub(crate) fn call<'ctx, 'b>(
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
     // let (gas, to, value, in_off, in_len, out_off, out_len) = __stack_pop_7(bctx)?;
+    let to = __stack_pop_1(bctx, vstack)?;
 
+    // Create sub call context
     let zero = bctx.env.types().word.const_zero();
     let ret = bctx.builder.build_call(
         bctx.env.runtime_vals().contract_new_ctx(),
@@ -719,15 +721,15 @@ pub(crate) fn call<'ctx, 'b>(
     )?;
     let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(ret.as_value_ref()) };
 
-    let to = __stack_pop_1(bctx, vstack)?;
-    let to = bctx
-        .builder
-        .build_int_truncate(to, bctx.env.types().i32, "call_to")?;
-
+    // Call the contract with the call context
     let contract_call_fn = bctx.env.runtime_vals().contract_call();
     let make_contract_call = bctx.builder.build_call(
         contract_call_fn,
-        &[to.into(), call_ctx_ptr.into()],
+        &[
+            bctx.registers.exec_ctx.into(),
+            call_ctx_ptr.into(),
+            to.into(),
+        ],
         "contract_call",
     )?;
 
