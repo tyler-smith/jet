@@ -5,6 +5,7 @@ use crate::runtime::*;
 #[repr(C)]
 pub struct Memory {
     buf: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
+
     len: u32,
     cap: u32,
 }
@@ -13,10 +14,12 @@ pub struct Memory {
 pub struct Context {
     stack_ptr: u32,
     jump_ptr: u32,
+
     return_offset: u32,
     return_length: u32,
+
     stack: [u8; (WORD_SIZE_BYTES * STACK_SIZE_WORDS) as usize],
-    // memory: [u8; WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS],
+
     memory: Memory,
 }
 
