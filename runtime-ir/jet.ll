@@ -58,11 +58,13 @@ target triple = "x86_64-apple-macosx14.0.0"
 ;
 ; Runtime functions
 ;
+attributes #0 = { alwaysinline nounwind }
+
 declare i8 @jet.contracts.lookup(ptr, ptr, i8*)
 
 ; Pushes a word onto the stack and incs the stack ptr.
 ; Returns true if the operation was successful, false if the stack is full.
-define i1 @jet.stack.push.word (%jet.types.exec_ctx*, i256) {
+define i1 @jet.stack.push.word (%jet.types.exec_ctx*, i256) #0 {
 entry:
   ; Load stack pointer
   %stack_ptr_gep = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
@@ -83,7 +85,7 @@ entry:
 
 ; Pushes an array of 32 bytes onto the stack as a word, and incs the stack ptr.
 ; Returns true if the operation was successful, false if the stack is full.
-define i1 @jet.stack.push.bytes (%jet.types.exec_ctx*, [32 x i8]) {
+define i1 @jet.stack.push.bytes (%jet.types.exec_ctx*, [32 x i8]) #0 {
 entry:
   ; Cast byte array to word and send to @jet.stack.push.word
   %stack_bytes_ptr = alloca [32 x i8]
@@ -93,7 +95,7 @@ entry:
   ret i1 %result
 }
 
-define i256 @jet.stack.pop (%jet.types.exec_ctx* %0) {
+define i256 @jet.stack.pop (%jet.types.exec_ctx* %0) #0 {
 entry:
   ; Load stack pointer
   %stack_ptr_gep = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
@@ -110,7 +112,7 @@ entry:
   ret i256 %stack_word
 }
 
-define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) {
+define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
 entry:
   %loc_i32 = trunc i256 %loc to i32
 
@@ -123,7 +125,7 @@ entry:
   ret i8 0
 }
 
-define i8 @jet.mem.store.byte (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) {
+define i8 @jet.mem.store.byte (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
 entry:
   %loc_i32 = trunc i256 %loc to i32
   %val_i8 = trunc i256 %val to i8
@@ -136,7 +138,7 @@ entry:
   ret i8 0
 }
 
-define i256 @jet.mem.load (%jet.types.exec_ctx* %ctx, i256 %loc) {
+define i256 @jet.mem.load (%jet.types.exec_ctx* %ctx, i256 %loc) #0 {
 entry:
   %loc_i32 = trunc i256 %loc to i32
 
@@ -148,7 +150,7 @@ entry:
   ret i256 %val
 }
 
-define i1 @jet.mem.copy (%jet.types.exec_ctx* %caller_ctx, i256 %caller_offset, %jet.types.exec_ctx* %callee_ctx, i256 %callee_offset, i256 %copy_len) {
+define i1 @jet.mem.copy (%jet.types.exec_ctx* %caller_ctx, i256 %caller_offset, %jet.types.exec_ctx* %callee_ctx, i256 %callee_offset, i256 %copy_len) #0 {
 entry:
   %caller_offset_i32 = trunc i256 %caller_offset to i32
   %callee_offset_i32 = trunc i256 %callee_offset to i32
@@ -167,13 +169,13 @@ entry:
   ret i1 0
 }
 
-define %jet.types.exec_ctx* @jet.contracts.new_sub_ctx (%jet.types.exec_ctx* %caller_ctx, i256 %gas, i256 %value, i256 %in_off, i256 %in_len, i256 %out_off, i256 %out_len) {
+define %jet.types.exec_ctx* @jet.contracts.new_sub_ctx (%jet.types.exec_ctx* %caller_ctx, i256 %gas, i256 %value, i256 %in_off, i256 %in_len, i256 %out_off, i256 %out_len) #0 {
   %ctx = alloca %jet.types.exec_ctx
   ; TODO: Add call data to ctx and set it here
   ret %jet.types.exec_ctx* %ctx
 }
 
-define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i256 %addr) {
+define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i256 %addr) #0 {
     ; Convert the 256bit address to an array of 20 bytes (160 bits)
     %addr_i160 = trunc i256 %addr to i160
     %addr_i160_ptr = alloca i160, align 8
