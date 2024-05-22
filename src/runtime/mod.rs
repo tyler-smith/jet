@@ -8,12 +8,14 @@ pub const STACK_SIZE_WORDS: u32 = 1024;
 // Runtime memory
 pub const MEMORY_INITIAL_SIZE_WORDS: u32 = 1024;
 
+// Storage
+pub const STORAGE_INITIAL_SIZE_WORDS: u32 = 1024;
+
 // Globals
-pub const GLOBAL_NAME_JIT_ENGINE: &str = "jet.jit_engine";
+pub const GLOBAL_NAME_JIT_ENGINE: &'static str = "jet.jit_engine";
 
 // Function names
-pub const FN_NAME_CONTRACT_PREFIX: &str = "jet.contracts.";
-// pub const FN_NAME_EXEC_CTX_CTOR: &'static str = "exec_ctx_ctor";
+pub const FN_NAME_CONTRACT_PREFIX: &'static str = "jet.contracts.";
 
 pub const FN_NAME_STACK_PUSH_WORD: &'static str = "jet.stack.push.word";
 pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "jet.stack.push.bytes";
