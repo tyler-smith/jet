@@ -1,3 +1,4 @@
+use jet::instructions::Instruction;
 use jet::runtime::ReturnCode;
 use roms::*;
 
@@ -6,11 +7,11 @@ mod roms;
 rom_tests! {
     one_plus_two: Test {
         rom: vec![
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x01,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x02,
-            jet::instructions::ADD,
+            Instruction::ADD.opcode(),
         ],
         expected: TestContractRun {
             stack_ptr: 1,
@@ -21,11 +22,11 @@ rom_tests! {
 
     basic_jump: Test {
         rom: vec![
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x03,
-            jet::instructions::JUMP,
-            jet::instructions::JUMPDEST,
-            jet::instructions::PUSH1,
+            Instruction::JUMP.opcode(),
+            Instruction::JUMPDEST.opcode(),
+            Instruction::PUSH1.opcode(),
             42,
         ],
         expected: TestContractRun {
@@ -38,23 +39,23 @@ rom_tests! {
 
     basic_mem_ops: Test {
         rom: vec![
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0xFF,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x02,
-            jet::instructions::MSTORE,
-            jet::instructions::PUSH1,
+            Instruction::MSTORE.opcode(),
+            Instruction::PUSH1.opcode(),
             0x00,
-            jet::instructions::MLOAD,
-            jet::instructions::PUSH2,
+            Instruction::MLOAD.opcode(),
+            Instruction::PUSH2.opcode(),
             0xFF,
             0xFF,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x00,
-            jet::instructions::MSTORE8,
-            jet::instructions::PUSH1,
+            Instruction::MSTORE8.opcode(),
+            Instruction::PUSH1.opcode(),
             0x00,
-            jet::instructions::MLOAD,
+            Instruction::MLOAD.opcode(),
         ],
         expected: TestContractRun {
             stack_ptr: 2,
@@ -65,16 +66,16 @@ rom_tests! {
 
     vstack_accesses_real_stack_after_jump: Test{
         rom: vec![
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x01,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x02,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x07,
-            jet::instructions::JUMP,
-            jet::instructions::JUMPDEST,
-            jet::instructions::ADD,
-            jet::instructions::PUSH1,
+            Instruction::JUMP.opcode(),
+            Instruction::JUMPDEST.opcode(),
+            Instruction::ADD.opcode(),
+            Instruction::PUSH1.opcode(),
             42,
         ],
         expected: TestContractRun {
@@ -87,11 +88,11 @@ rom_tests! {
 
     return_sets_offset_and_length: Test{
         rom: vec![
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x20,
-            jet::instructions::PUSH1,
+            Instruction::PUSH1.opcode(),
             0x03,
-            jet::instructions::RETURN,
+            Instruction::RETURN.opcode(),
         ],
         expected: TestContractRun {
             result: ReturnCode::ExplicitReturn,

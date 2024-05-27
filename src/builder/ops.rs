@@ -5,6 +5,7 @@ use log::trace;
 
 use crate::builder::contract_builder::BuildCtx;
 use crate::builder::errors::BuildError;
+use crate::instructions::Instruction;
 use crate::runtime::ReturnCode;
 
 //
@@ -608,7 +609,7 @@ pub(crate) fn keccak256<'ctx, 'b>(
     _: &BuildCtx<'ctx, 'b>,
     _vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
-    Err(BuildError::NotImplemented)
+    Err(BuildError::UnimplementedInstruction(Instruction::KECCAK256))
 }
 
 pub(crate) fn returndatasize<'ctx, 'b>(
@@ -644,6 +645,50 @@ pub(crate) fn returndatasize<'ctx, 'b>(
             .build_int_z_extend(ret.into(), bctx.env.types().word, "return_length_word")?;
 
     __stack_push_word(bctx, vstack, return_length_word)?;
+    Ok(())
+}
+
+pub(crate) fn returndatacopy<'ctx, 'b>(
+    bctx: &BuildCtx<'ctx, 'b>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+) -> Result<(), BuildError> {
+    let (dest_off, src_off, len) = __stack_pop_3(bctx, vstack)?;
+
+    // Load sub call ctx
+    let sub_call_ctx_ptr = bctx.builder.build_load(
+        bctx.env.types().ptr,
+        bctx.registers.sub_call.into(),
+        "sub_call_ctx_ptr",
+    )?;
+
+    let sub_call_ctx_ptr =
+        unsafe { inkwell::values::PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
+
+    // Truncate parameters to correct bit sizes
+    let dest_off = bctx
+        .builder
+        .build_int_truncate(dest_off, bctx.env.types().i32, "return_data_dest_off")?;
+    let src_off = bctx
+        .builder
+        .build_int_truncate(src_off, bctx.env.types().i32, "return_data_src_off")?;
+    let len = bctx
+        .builder
+        .build_int_truncate(len, bctx.env.types().i32, "return_data_len")?;
+
+    // Call the runtime function to copy the return data
+    bctx.builder.build_call(
+        bctx.env.runtime_vals().contract_call_return_data_copy(),
+        &[
+            bctx.registers.exec_ctx.into(),
+            sub_call_ctx_ptr.into(),
+            dest_off.into(),
+            src_off.into(),
+            len.into(),
+        ],
+        "return_data_copy",
+    )?;
+
+
     Ok(())
 }
 
@@ -737,7 +782,7 @@ pub(crate) fn call<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
-    let (gas, to, value, in_off, in_len, out_off, out_len) = __stack_pop_7(bctx, vstack)?;
+    let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx, vstack)?;
     // let to = __stack_pop_1(bctx, vstack)?;
 
     // Create sub call context
@@ -813,5 +858,5 @@ pub(crate) fn selfdestruct<'ctx, 'b>(
     _bctx: &BuildCtx<'ctx, 'b>,
     _vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
-    Err(BuildError::NotImplemented)
+    Err(BuildError::UnimplementedInstruction(Instruction::SELFDESTRUCT))
 }

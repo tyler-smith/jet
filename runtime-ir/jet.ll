@@ -196,7 +196,7 @@ set_return_info:
     %callee.return.empty = icmp eq i32 %callee.return.len, 0
     br i1 %callee.return.empty, label %return, label %copy_return_data
 copy_return_data:
-    %copy.ret = call i8 @jet.contracts.call_return_data_copy(ptr %caller_ctx, ptr %callee_ctx, i32 %ret.dest, i32 %ret.len)
+    %copy.ret = call i8 @jet.contracts.call_return_data_copy(ptr %caller_ctx, ptr %callee_ctx, i32 %ret.dest, i32 0, i32 %ret.len)
     br label %return
 return:
     %r = phi i8 [%copy.ret, %copy_return_data], [0, %set_return_info], [2, %invoke_fn], [1, %entry]

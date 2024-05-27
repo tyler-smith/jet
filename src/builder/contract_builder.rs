@@ -1,11 +1,13 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, IntValue};
-use log::{error, info, trace};
+use log::{info, trace};
 
+use crate::{ROMIterator, ROMIteratorItem};
 use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::ops;
-use crate::instructions;
+// use crate::instructions;
+use crate::instructions::Instruction;
 use crate::runtime::ReturnCode;
 
 const VSTACK_INIT_SIZE: usize = 32;
@@ -189,71 +191,70 @@ impl<'ctx> ContractBuilder {
         func: FunctionValue<'ctx>,
         bytecode: &'b [u8],
     ) -> CodeBlocks<'ctx, 'b> {
-        let mut current_pc = 0usize;
-        let mut blocks = CodeBlocks::new();
-        let mut current_block: &mut CodeBlock;
-        let create_bb = || env.context().append_basic_block(func, "block");
-
-        current_block = blocks.add(0, create_bb());
         trace!("find_code_blocks: Creating code blocks");
         trace!("find_code_blocks: ROM: {:?}", bytecode);
-        let mut i = 0;
-        while i < bytecode.len() {
-            let byte = &bytecode[i];
-            trace!("find_code_blocks: Checking byte {:?}", byte);
 
-            // If this byte is a push instruction then we need to skip the next n bytes
-            if *byte >= instructions::PUSH1 && *byte <= instructions::PUSH32 {
-                let byte_count = (*byte - instructions::PUSH1 + 1) as usize;
-                i += byte_count + 1;
-                trace!("find_code_blocks: Found push, skipping {} bytes", i);
-                continue;
-            }
+        let create_bb = || env.context().append_basic_block(func, "block");
 
-            match *byte {
-                // Instructions that terminate a block
-                // When these appear we finish out the current block and mark it as terminating
-                instructions::STOP
-                | instructions::RETURN
-                | instructions::REVERT
-                | instructions::JUMP => {
-                    trace!("find_code_blocks: Found terminator {}", *byte);
-                    current_block.rom = &bytecode[current_pc..i + 1];
-                    current_block.set_terminates();
-                    current_pc = i + 1;
+        let mut blocks = CodeBlocks::new();
+        let mut current_block: &mut CodeBlock = blocks.add(0, create_bb());
+        let mut current_block_starting_pc = 0usize;
+
+        for item in ROMIterator::new(bytecode) {
+            match item {
+                ROMIteratorItem::PushData(pc, data) => {
+                    trace!("find_code_blocks: Found push data {:?} at PC {}", data, pc);
                 }
+                ROMIteratorItem::Instr(pc, instr) => {
+                    trace!("find_code_blocks: Found instruction {:?} at PC {}", instr, pc);
+                    match instr {
+                        // Instructions that terminate a block
+                        // When these appear we finish out the current block and mark it as terminating
+                        Instruction::STOP
+                        | Instruction::RETURN
+                        | Instruction::REVERT
+                        | Instruction::JUMP => {
+                            trace!("find_code_blocks: Found terminator {}", instr);
+                            current_block.rom = &bytecode[current_block_starting_pc..pc + 1];
+                            current_block.set_terminates();
+                            current_block_starting_pc = pc + 1;
+                        }
 
-                instructions::JUMPI => {
-                    trace!("find_code_blocks: Found JUMPI");
-                    current_block.rom = &bytecode[current_pc..i + 1];
-                    current_pc = i + 1;
-                    current_block = blocks.add(current_pc, create_bb());
-                }
+                        Instruction::JUMPI => {
+                            trace!("find_code_blocks: Found JUMPI");
+                            current_block.rom = &bytecode[current_block_starting_pc..pc + 1];
+                            current_block_starting_pc = pc + 1;
+                            current_block = blocks.add(current_block_starting_pc, create_bb());
+                        }
 
-                instructions::JUMPDEST => {
-                    trace!("find_code_blocks: Found JUMPDEST");
-                    if current_block.rom.is_empty() {
-                        current_block.rom = &bytecode[current_pc..i];
+                        Instruction::JUMPDEST => {
+                            trace!("find_code_blocks: Found JUMPDEST");
+                            if current_block.rom.is_empty() {
+                                current_block.rom = &bytecode[current_block_starting_pc..pc];
+                            }
+
+                            current_block_starting_pc = pc + 1;
+                            current_block = blocks.add(current_block_starting_pc, create_bb());
+                            current_block.set_is_jumpdest();
+                        }
+                        _ => {
+                            trace!("find_code_blocks: instr {} is uninteresting", instr);
+                        }
                     }
-
-                    current_pc = i + 1;
-                    current_block = blocks.add(current_pc, create_bb());
-                    current_block.set_is_jumpdest();
                 }
-                _ => {
-                    trace!("find_code_blocks: byte {} is uninteresting", *byte);
+                ROMIteratorItem::Invalid(pc) => {
+                    trace!("find_code_blocks: Found invalid instruction at PC {}", pc);
+                    // TODO: return error
                 }
             }
-
-            i += 1;
-        }
+        };
 
         if current_block.rom.is_empty() {
             trace!(
                 "find_code_blocks: Setting code block ROM from {} to end",
-                current_pc
+                current_block_starting_pc
             );
-            current_block.rom = &bytecode[current_pc..];
+            current_block.rom = &bytecode[current_block_starting_pc..];
         } else {
             trace!("find_code_blocks: Block has ROM {:?}", current_block.rom);
         }
@@ -350,103 +351,179 @@ impl<'ctx> ContractBuilder {
         // and start a relative PC at 0.
         bctx.builder.position_at_end(code_block.basic_block);
 
-        let mut pc = 0;
-        let bytecode = code_block.rom;
-        while pc < bytecode.len() {
-            let current_instruction = bytecode[pc];
-            trace!("loop:     PC: {}", pc);
-            trace!("loop:     Instruction: {}", current_instruction);
+        for item in ROMIterator::new(code_block.rom) {
+            match item {
+                ROMIteratorItem::PushData(_, data) => {
+                    trace!("loop: Data: {:?}", data);
+                    ops::push(bctx, vstack, data)?;
+                }
+                ROMIteratorItem::Instr(_, instr) => {
+                    trace!("loop: Instruction: {:?}", instr);
+                    match instr {
+                        Instruction::STOP => ops::stop(bctx, vstack),
 
-            // Handle PUSH<n> instructions
-            if instructions::PUSH_RANGE.contains(&current_instruction) {
-                let byte_count = (current_instruction - instructions::PUSH1 + 1) as usize;
-                trace!(
-                    "PUSH{} at {} ({}..{})",
-                    byte_count,
-                    pc,
-                    pc + 1,
-                    pc + byte_count + 1
-                );
-                trace!("{:?}", &bytecode);
-                // trace!("  {:?}", &bytecode[pc + 1..(pc + byte_count + 1)]);
-                ops::push(bctx, vstack, &bytecode[pc + 1..(pc + byte_count + 1)])?;
-                pc += 1 + byte_count;
-                continue;
+                        // Arithmetic
+                        Instruction::ADD => ops::add(bctx, vstack),
+                        Instruction::MUL => ops::mul(bctx, vstack),
+                        Instruction::SUB => ops::sub(bctx, vstack),
+                        Instruction::DIV => ops::div(bctx, vstack),
+                        Instruction::SDIV => ops::sdiv(bctx, vstack),
+                        Instruction::MOD => ops::_mod(bctx, vstack),
+                        Instruction::SMOD => ops::smod(bctx, vstack),
+                        Instruction::ADDMOD => ops::addmod(bctx, vstack),
+                        Instruction::MULMOD => ops::mulmod(bctx, vstack),
+                        Instruction::EXP => ops::exp(bctx),
+                        Instruction::SIGNEXTEND => ops::signextend(bctx),
+
+                        // Comparisons
+                        Instruction::LT => ops::lt(bctx, vstack),
+                        Instruction::GT => ops::gt(bctx, vstack),
+                        Instruction::SLT => ops::slt(bctx, vstack),
+                        Instruction::SGT => ops::sgt(bctx, vstack),
+                        Instruction::EQ => ops::eq(bctx, vstack),
+                        Instruction::ISZERO => ops::iszero(bctx, vstack),
+                        Instruction::AND => ops::and(bctx, vstack),
+                        Instruction::OR => ops::or(bctx, vstack),
+                        Instruction::XOR => ops::xor(bctx, vstack),
+                        Instruction::NOT => ops::not(bctx, vstack),
+                        // Instruction::BYTE => ops::byte(&bctx),
+                        Instruction::SHL => ops::shl(bctx, vstack),
+                        Instruction::SHR => ops::shr(bctx, vstack),
+                        Instruction::SAR => ops::sar(bctx, vstack),
+
+                        // Cryptographic
+                        Instruction::KECCAK256 => ops::keccak256(bctx, vstack),
+
+                        // Call data
+                        // Instruction::CALLVALUE => ops::callvalue(&bctx),
+                        // Instruction::CALLDATALOAD => ops::calldataload(&bctx),
+                        // Instruction::CALLDATASIZE => ops::calldatasize(&bctx),
+                        // Instruction::CALLDATACOPY => ops::calldatacopy(&bctx),
+                        Instruction::RETURNDATASIZE => ops::returndatasize(bctx, vstack),
+                        Instruction::RETURNDATACOPY => ops::returndatacopy(bctx, vstack),
+
+                        // Runtime
+                        Instruction::POP => ops::pop(bctx, vstack),
+
+                        Instruction::MLOAD => ops::mload(bctx, vstack),
+                        Instruction::MSTORE => ops::mstore(bctx, vstack),
+                        Instruction::MSTORE8 => ops::mstore8(bctx, vstack),
+
+                        Instruction::JUMP => ops::jump(bctx, vstack, jump_block),
+                        Instruction::JUMPI => {
+                            if let Some(next_block) = following_block {
+                                ops::jumpi(bctx, vstack, jump_block, next_block.basic_block)
+                            } else {
+                                panic!("JUMPI without following block")
+                            }
+                        }
+
+                        Instruction::CALL => ops::call(bctx, vstack),
+
+                        Instruction::RETURN => ops::_return(bctx, vstack),
+                        Instruction::REVERT => ops::revert(bctx, vstack),
+                        Instruction::INVALID => ops::invalid(bctx, vstack),
+                        Instruction::SELFDESTRUCT => ops::selfdestruct(bctx, vstack),
+
+                        //
+                        // Not yet implemented
+                        //
+                        Instruction::BYTE => { Err(BuildError::UnimplementedInstruction(Instruction::BYTE)) }
+                        Instruction::CALLVALUE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLVALUE)) }
+                        Instruction::CALLDATALOAD => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATALOAD)) }
+                        Instruction::CALLDATASIZE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATASIZE)) }
+                        Instruction::CALLDATACOPY => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATACOPY)) }
+                        Instruction::SLOAD => { Err(BuildError::UnimplementedInstruction(Instruction::SLOAD)) }
+                        Instruction::SSTORE => { Err(BuildError::UnimplementedInstruction(Instruction::SSTORE)) }
+                        Instruction::GETPC => { Err(BuildError::UnimplementedInstruction(Instruction::GETPC)) }
+                        Instruction::MSIZE => { Err(BuildError::UnimplementedInstruction(Instruction::MSIZE)) }
+                        Instruction::GAS => { Err(BuildError::UnimplementedInstruction(Instruction::GAS)) }
+                        Instruction::LOG0 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG0)) }
+                        Instruction::LOG1 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG1)) }
+                        Instruction::LOG2 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG2)) }
+                        Instruction::LOG3 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG3)) }
+                        Instruction::LOG4 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG4)) }
+                        Instruction::CREATE => { Err(BuildError::UnimplementedInstruction(Instruction::CREATE)) }
+                        Instruction::CALLCODE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLCODE)) }
+                        Instruction::DELEGATECALL => { Err(BuildError::UnimplementedInstruction(Instruction::DELEGATECALL)) }
+                        Instruction::CREATE2 => { Err(BuildError::UnimplementedInstruction(Instruction::CREATE2)) }
+                        Instruction::STATICCALL => { Err(BuildError::UnimplementedInstruction(Instruction::STATICCALL)) }
+
+                        //
+                        // We should handle all of these before here
+                        //
+                        Instruction::JUMPDEST => { Err(BuildError::UnexpectedInstruction(Instruction::JUMPDEST)) }
+                        Instruction::PUSH1 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH1)) }
+                        Instruction::PUSH2 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH2)) }
+                        Instruction::PUSH3 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH3)) }
+                        Instruction::PUSH4 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH4)) }
+                        Instruction::PUSH5 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH5)) }
+                        Instruction::PUSH6 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH6)) }
+                        Instruction::PUSH7 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH7)) }
+                        Instruction::PUSH8 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH8)) }
+                        Instruction::PUSH9 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH9)) }
+                        Instruction::PUSH10 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH10)) }
+                        Instruction::PUSH11 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH11)) }
+                        Instruction::PUSH12 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH12)) }
+                        Instruction::PUSH13 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH13)) }
+                        Instruction::PUSH14 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH14)) }
+                        Instruction::PUSH15 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH15)) }
+                        Instruction::PUSH16 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH16)) }
+                        Instruction::PUSH17 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH17)) }
+                        Instruction::PUSH18 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH18)) }
+                        Instruction::PUSH19 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH19)) }
+                        Instruction::PUSH20 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH20)) }
+                        Instruction::PUSH21 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH21)) }
+                        Instruction::PUSH22 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH22)) }
+                        Instruction::PUSH23 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH23)) }
+                        Instruction::PUSH24 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH24)) }
+                        Instruction::PUSH25 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH25)) }
+                        Instruction::PUSH26 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH26)) }
+                        Instruction::PUSH27 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH27)) }
+                        Instruction::PUSH28 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH28)) }
+                        Instruction::PUSH29 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH29)) }
+                        Instruction::PUSH30 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH30)) }
+                        Instruction::PUSH31 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH31)) }
+                        Instruction::PUSH32 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH32)) }
+                        Instruction::DUP1 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP1)) }
+                        Instruction::DUP2 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP2)) }
+                        Instruction::DUP3 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP3)) }
+                        Instruction::DUP4 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP4)) }
+                        Instruction::DUP5 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP5)) }
+                        Instruction::DUP6 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP6)) }
+                        Instruction::DUP7 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP7)) }
+                        Instruction::DUP8 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP8)) }
+                        Instruction::DUP9 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP9)) }
+                        Instruction::DUP10 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP10)) }
+                        Instruction::DUP11 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP11)) }
+                        Instruction::DUP12 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP12)) }
+                        Instruction::DUP13 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP13)) }
+                        Instruction::DUP14 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP14)) }
+                        Instruction::DUP15 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP15)) }
+                        Instruction::DUP16 => { Err(BuildError::UnexpectedInstruction(Instruction::DUP16)) }
+                        Instruction::SWAP1 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP1)) }
+                        Instruction::SWAP2 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP2)) }
+                        Instruction::SWAP3 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP3)) }
+                        Instruction::SWAP4 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP4)) }
+                        Instruction::SWAP5 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP5)) }
+                        Instruction::SWAP6 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP6)) }
+                        Instruction::SWAP7 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP7)) }
+                        Instruction::SWAP8 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP8)) }
+                        Instruction::SWAP9 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP9)) }
+                        Instruction::SWAP10 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP10)) }
+                        Instruction::SWAP11 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP11)) }
+                        Instruction::SWAP12 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP12)) }
+                        Instruction::SWAP13 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP13)) }
+                        Instruction::SWAP14 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP14)) }
+                        Instruction::SWAP15 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP15)) }
+                        Instruction::SWAP16 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP16)) }
+                    }?;
+                }
+                ROMIteratorItem::Invalid(_) => {
+                    trace!("loop: Invalid");
+                    return Err(BuildError::UnknownInstruction(0));
+                }
             }
-
-            // Handle remaining instructions
-            match current_instruction {
-                instructions::STOP => ops::stop(bctx, vstack),
-
-                // Arithmetic
-                instructions::ADD => ops::add(bctx, vstack),
-                instructions::MUL => ops::mul(bctx, vstack),
-                instructions::SUB => ops::sub(bctx, vstack),
-                instructions::DIV => ops::div(bctx, vstack),
-                instructions::SDIV => ops::sdiv(bctx, vstack),
-                instructions::MOD => ops::_mod(bctx, vstack),
-                instructions::SMOD => ops::smod(bctx, vstack),
-                instructions::ADDMOD => ops::addmod(bctx, vstack),
-                instructions::MULMOD => ops::mulmod(bctx, vstack),
-                instructions::EXP => ops::exp(bctx),
-                instructions::SIGNEXTEND => ops::signextend(bctx),
-
-                // Comparisons
-                instructions::LT => ops::lt(bctx, vstack),
-                instructions::GT => ops::gt(bctx, vstack),
-                instructions::SLT => ops::slt(bctx, vstack),
-                instructions::SGT => ops::sgt(bctx, vstack),
-                instructions::EQ => ops::eq(bctx, vstack),
-                instructions::ISZERO => ops::iszero(bctx, vstack),
-                instructions::AND => ops::and(bctx, vstack),
-                instructions::OR => ops::or(bctx, vstack),
-                instructions::XOR => ops::xor(bctx, vstack),
-                instructions::NOT => ops::not(bctx, vstack),
-                // instructions::BYTE => ops::byte(&bctx),
-                instructions::SHL => ops::shl(bctx, vstack),
-                instructions::SHR => ops::shr(bctx, vstack),
-                instructions::SAR => ops::sar(bctx, vstack),
-
-                // Cryptographic
-                instructions::KECCAK256 => ops::keccak256(bctx, vstack),
-
-                // Call data
-                // instructions::CALLVALUE => ops::callvalue(&bctx),
-                // instructions::CALLDATALOAD => ops::calldataload(&bctx),
-                // instructions::CALLDATASIZE => ops::calldatasize(&bctx),
-                // instructions::CALLDATACOPY => ops::calldatacopy(&bctx),
-                instructions::RETURNDATASIZE => ops::returndatasize(bctx, vstack),
-
-                // Runtime
-                instructions::POP => ops::pop(bctx, vstack),
-
-                instructions::MLOAD => ops::mload(bctx, vstack),
-                instructions::MSTORE => ops::mstore(bctx, vstack),
-                instructions::MSTORE8 => ops::mstore8(bctx, vstack),
-
-                instructions::JUMP => ops::jump(bctx, vstack, jump_block),
-                instructions::JUMPI => {
-                    if let Some(next_block) = following_block {
-                        ops::jumpi(bctx, vstack, jump_block, next_block.basic_block)
-                    } else {
-                        panic!("JUMPI without following block")
-                    }
-                }
-
-                instructions::CALL => ops::call(bctx, vstack),
-
-                instructions::RETURN => ops::_return(bctx, vstack),
-                instructions::REVERT => ops::revert(bctx, vstack),
-                instructions::INVALID => ops::invalid(bctx, vstack),
-                instructions::SELFDESTRUCT => ops::selfdestruct(bctx, vstack),
-
-                _ => {
-                    error!("Unknown instruction: {}", current_instruction);
-                    break;
-                }
-            }?;
-
-            pc += 1;
         }
         Ok(())
     }

@@ -3,12 +3,17 @@ use std::fmt::Display;
 use inkwell::builder::BuilderError;
 use inkwell::support::LLVMString;
 
+use crate::instructions::Instruction;
+
 #[derive(Debug)]
 pub enum BuildError {
     BuilderError(BuilderError),
     LLVMError(LLVMString),
     VerifyError,
-    NotImplemented,
+
+    UnimplementedInstruction(Instruction),
+    UnexpectedInstruction(Instruction),
+    UnknownInstruction(u8),
 }
 
 impl From<BuilderError> for BuildError {
@@ -29,7 +34,9 @@ impl Display for BuildError {
             BuildError::BuilderError(e) => write!(f, "BuildError: {}", e),
             BuildError::LLVMError(e) => write!(f, "BuildError: LLVM: {}", e),
             BuildError::VerifyError => write!(f, "BuildError: verify error"),
-            BuildError::NotImplemented => write!(f, "BuildError: not implemented"),
+            BuildError::UnimplementedInstruction(inst) => write!(f, "BuildError: unimplemented instruction ({})", inst),
+            BuildError::UnexpectedInstruction(inst) => write!(f, "BuildError: unexpected instruction ({})", inst),
+            BuildError::UnknownInstruction(byte) => write!(f, "BuildError: unknown instruction ({}))", byte),
         }
     }
 }

@@ -5,6 +5,8 @@ use inkwell::context::Context;
 use log::info;
 use simple_logger::SimpleLogger;
 
+use jet::instructions::Instruction;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct CLI {
@@ -78,55 +80,62 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     );
 
     // let test_rom = &vec![
-    //     jet::instructions::PUSH1,
+    //     Instruction::PUSH1,
     //     0x01,
-    //     jet::instructions::PUSH1,
+    //     Instruction::PUSH1,
     //     0x02,
-    //     jet::instructions::PUSH1,
+    //     Instruction::PUSH1,
     //     0x07,
-    //     jet::instructions::JUMP,
-    //     jet::instructions::JUMPDEST,
-    //     jet::instructions::ADD,
-    //     jet::instructions::PUSH1,
+    //     Instruction::JUMP,
+    //     Instruction::JUMPDEST,
+    //     Instruction::ADD,
+    //     Instruction::PUSH1,
     //     42,
     // ];
 
     let alice_rom = &vec![
-        jet::instructions::PUSH1, // Output len
+        Instruction::PUSH1.opcode(), // Output len
         0x0A,
-        jet::instructions::PUSH1, // Output offset
+        Instruction::PUSH1.opcode(), // Output offset
         0x00,
-        jet::instructions::PUSH1, // Input len
+        Instruction::PUSH1.opcode(), // Input len
         0x00,
-        jet::instructions::PUSH1, // Input offset
+        Instruction::PUSH1.opcode(), // Input offset
         0x00,
-        jet::instructions::PUSH1, // Value
+        Instruction::PUSH1.opcode(), // Value
         0x00,
-        jet::instructions::PUSH2, // Address
+        Instruction::PUSH2.opcode(), // Address
         0x56,
         0x78,
-        jet::instructions::PUSH1, // Gas
+        Instruction::PUSH1.opcode(), // Gas
         0x00,
-        jet::instructions::CALL,
-        jet::instructions::RETURNDATASIZE,
+        Instruction::CALL.opcode(),
+        Instruction::RETURNDATASIZE.opcode(),
+        Instruction::PUSH1.opcode(), // Len
+        0x02,
+        Instruction::PUSH1.opcode(), // Src offset
+        0x00,
+        Instruction::PUSH1.opcode(), // Dest offset
+        0x04,
+        Instruction::RETURNDATACOPY.opcode(),
     ];
 
     let bob_rom = &vec![
-        jet::instructions::PUSH1,
+        Instruction::PUSH1.opcode(),
         0xFF,
-        jet::instructions::PUSH1,
+        Instruction::PUSH1.opcode(),
         0x01,
-        jet::instructions::MSTORE,
-        // jet::instructions::PUSH1,
+        Instruction::MSTORE.opcode(),
+        // Instruction::PUSH1,
         // 0xFF,
-        // jet::instructions::PUSH1,
+        // Instruction::PUSH1,
         // 0x1F,
-        // jet::instructions::MSTORE8,
-        jet::instructions::PUSH1,
+        // Instruction::MSTORE8,
+        Instruction::PUSH1.opcode(),
         0x0A,
-        jet::instructions::PUSH1,
+        Instruction::PUSH1.opcode(),
         0x00,
-        jet::instructions::RETURN,
+        Instruction::RETURN.opcode(),
     ];
 
     let context = Context::create();

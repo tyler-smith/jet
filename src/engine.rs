@@ -20,6 +20,7 @@ extern "C" fn jet_contracts_call_return_data_copy(
     ctx: *mut exec::Context,
     sub_ctx: *const exec::Context,
     dest_offset: u32,
+    src_offset: u32,
     requested_ret_len: u32,
 ) -> u8 {
     let ctx = unsafe { &mut *ctx };
@@ -34,7 +35,7 @@ extern "C" fn jet_contracts_call_return_data_copy(
 
 
     // Bounds checks for the memory and return data
-    if requested_ret_len > ret_len {
+    if src_offset + requested_ret_len > ret_len {
         return 3;
     }
     let ret_offset_end = ret_offset + requested_ret_len;
@@ -46,15 +47,11 @@ extern "C" fn jet_contracts_call_return_data_copy(
     //     return 3;
     // }
 
-    // Calculate final memory index ranges
-    let src_range = ret_offset as usize..ret_offset_end as usize;
-    let dest_range = dest_offset as usize..(dest_offset + requested_ret_len) as usize;
-
-    trace!("src_range: {:?}\ndest_range: {:?}", src_range, dest_range);
-
     // Copy the data
+    let src_range = src_offset as usize..(src_offset + requested_ret_len) as usize;
+    let dest_range = dest_offset as usize..(dest_offset + requested_ret_len) as usize;
     let dest = &mut ctx.memory_mut()[dest_range];
-    dest.copy_from_slice(&sub_ctx.memory()[src_range]);
+    dest.copy_from_slice(&sub_ctx.return_data()[src_range]);
     return 0;
 }
 

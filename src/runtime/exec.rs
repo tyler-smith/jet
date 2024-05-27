@@ -51,6 +51,13 @@ impl Context {
         self.return_len
     }
 
+    pub fn return_data(&self) -> &[u8] {
+        let offset = self.return_off as usize;
+        let end = offset + self.return_len as usize;
+        // TODO: Check bounds
+        &self.memory[offset..end]
+    }
+
     pub fn stack(&self) -> &[u8] {
         &self.stack
     }
