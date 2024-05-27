@@ -611,6 +611,42 @@ pub(crate) fn keccak256<'ctx, 'b>(
     Err(BuildError::NotImplemented)
 }
 
+pub(crate) fn returndatasize<'ctx, 'b>(
+    bctx: &BuildCtx<'ctx, 'b>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+) -> Result<(), BuildError> {
+    // Load sub call ctx
+    let sub_call_ctx_ptr = bctx.builder.build_load(
+        bctx.env.types().ptr,
+        bctx.registers.sub_call.into(),
+        "sub_call_ctx_ptr",
+    )?;
+
+    let sub_call_ctx_ptr =
+        unsafe { inkwell::values::PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
+
+    // GetElementPointer to the return length
+    let return_length_ptr = bctx.builder.build_struct_gep(
+        bctx.env.types().exec_ctx,
+        sub_call_ctx_ptr.into(),
+        3,
+        "return_length_ptr",
+    )?;
+
+    let return_length =
+        bctx.builder
+            .build_load(bctx.env.types().i32, return_length_ptr, "return_length")?;
+
+    let ret = unsafe { IntValue::new(return_length.as_value_ref()) };
+
+    let return_length_word =
+        bctx.builder
+            .build_int_z_extend(ret.into(), bctx.env.types().word, "return_length_word")?;
+
+    __stack_push_word(bctx, vstack, return_length_word)?;
+    Ok(())
+}
+
 pub(crate) fn pop<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     vstack: &mut Vec<IntValue<'ctx>>,
@@ -701,25 +737,25 @@ pub(crate) fn call<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
-    // let (gas, to, value, in_off, in_len, out_off, out_len) = __stack_pop_7(bctx)?;
-    let to = __stack_pop_1(bctx, vstack)?;
+    let (gas, to, value, in_off, in_len, out_off, out_len) = __stack_pop_7(bctx, vstack)?;
+    // let to = __stack_pop_1(bctx, vstack)?;
 
     // Create sub call context
-    let zero = bctx.env.types().word.const_zero();
-    let ret = bctx.builder.build_call(
-        bctx.env.runtime_vals().contract_new_ctx(),
-        &[
-            bctx.registers.exec_ctx.into(),
-            zero.into(),
-            zero.into(),
-            zero.into(),
-            zero.into(),
-            zero.into(),
-            zero.into(),
-        ],
-        "call_ctx",
-    )?;
-    let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(ret.as_value_ref()) };
+    let call_ctx =
+        bctx.builder
+            .build_call(bctx.env.runtime_vals().contract_new_ctx(), &[], "call_ctx")?;
+    let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(call_ctx.as_value_ref()) };
+
+    // Truncate parameters to correct bit sizes
+    let to = bctx
+        .builder
+        .build_int_truncate(to, bctx.env.types().i160, "call_to")?;
+    let out_off = bctx
+        .builder
+        .build_int_truncate(out_off, bctx.env.types().i32, "call_out_offset")?;
+    let out_len = bctx
+        .builder
+        .build_int_truncate(out_len, bctx.env.types().i32, "call_out_len")?;
 
     // Call the contract with the call context
     let contract_call_fn = bctx.env.runtime_vals().contract_call();
@@ -729,6 +765,8 @@ pub(crate) fn call<'ctx, 'b>(
             bctx.registers.exec_ctx.into(),
             call_ctx_ptr.into(),
             to.into(),
+            out_off.into(),
+            out_len.into(),
         ],
         "contract_call",
     )?;

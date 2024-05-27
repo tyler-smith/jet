@@ -1,15 +1,15 @@
 pub mod exec;
 
-// System architecture
+// System architecture; These are defined by the EVM
 pub const WORD_SIZE_BITS: u32 = 256;
 pub const WORD_SIZE_BYTES: u32 = WORD_SIZE_BITS / 8;
 pub const STACK_SIZE_WORDS: u32 = 1024;
+pub const ADDRESS_SIZE_BYTES: usize = 2;
 
-// Runtime memory
+// Runtime sizes; These are defined by the Jet runtime
 pub const MEMORY_INITIAL_SIZE_WORDS: u32 = 1024;
-
-// Storage
 pub const STORAGE_INITIAL_SIZE_WORDS: u32 = 1024;
+pub const SUB_CALL_RETURN_MAX_SIZE_WORDS: u32 = 1024;
 
 // Globals
 pub const GLOBAL_NAME_JIT_ENGINE: &'static str = "jet.jit_engine";
@@ -25,9 +25,10 @@ pub const FN_NAME_MEM_STORE_WORD: &'static str = "jet.mem.store.word";
 pub const FN_NAME_MEM_STORE_BYTE: &'static str = "jet.mem.store.byte";
 pub const FN_NAME_MEM_LOAD: &'static str = "jet.mem.load";
 
-pub const FN_NAME_CONTRACT_NEW_SUB_CTX: &'static str = "jet.contracts.new_sub_ctx";
-pub const FN_NAME_CONTRACT_LOOKUP: &'static str = "jet.contracts.lookup";
+pub const FN_NAME_CONTRACT_CALL_NEW_SUB_CTX: &'static str = "jet.contracts.new_sub_ctx";
+pub const FN_NAME_CONTRACT_CALL_LOOKUP: &'static str = "jet.contracts.lookup";
 pub const FN_NAME_CONTRACT_CALL: &'static str = "jet.contracts.call";
+pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &'static str = "jet.contracts.call_return_data_copy";
 
 pub fn mangle_contract_fn(address: &str) -> String {
     format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)

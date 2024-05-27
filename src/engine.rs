@@ -13,8 +13,55 @@ use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::manager::Manager;
 use crate::runtime;
-use crate::runtime::exec;
+use crate::runtime::{ADDRESS_SIZE_BYTES, exec};
 use crate::runtime::exec::ContractFunc;
+
+extern "C" fn jet_contracts_call_return_data_copy(
+    ctx: *mut exec::Context,
+    sub_ctx: *const exec::Context,
+    dest_offset: u32,
+    requested_ret_len: u32,
+) -> u8 {
+    let ctx = unsafe { &mut *ctx };
+    let sub_ctx = unsafe { &*sub_ctx };
+
+    // Get return and memory data from the callee
+    let ret_offset = sub_ctx.return_off();
+    let ret_len = sub_ctx.return_len();
+    let mem_len = sub_ctx.memory_len();
+
+    trace!("jet_contracts_call_return_data_copy:\ndest_offset: {}\nrequested_ret_len: {}\n\nret_offset: {}\nret_len: {}\nmem_len: {}", dest_offset, requested_ret_len, ret_offset, ret_len, mem_len);
+
+
+    // Bounds checks for the memory and return data
+    if requested_ret_len > ret_len {
+        return 3;
+    }
+    let ret_offset_end = ret_offset + requested_ret_len;
+    if ret_offset_end > ret_len {
+        return 4;
+    }
+    // TODO: Enable this check after adding memory len handling
+    // if ret_offset_end > mem_len {
+    //     return 3;
+    // }
+
+    // Calculate final memory index ranges
+    let src_range = ret_offset as usize..ret_offset_end as usize;
+    let dest_range = dest_offset as usize..(dest_offset + requested_ret_len) as usize;
+
+    trace!("src_range: {:?}\ndest_range: {:?}", src_range, dest_range);
+
+    // Copy the data
+    let dest = &mut ctx.memory_mut()[dest_range];
+    dest.copy_from_slice(&sub_ctx.memory()[src_range]);
+    return 0;
+}
+
+extern "C" fn new_contract_ctx() -> usize {
+    let ctx = exec::Context::new();
+    Box::into_raw(Box::new(ctx)) as usize
+}
 
 extern "C" fn contract_fn_lookup(
     jit_engine: *const ExecutionEngine,
@@ -22,7 +69,7 @@ extern "C" fn contract_fn_lookup(
     addr: usize,
 ) -> i8 {
     // Convert the address to a function name
-    let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, 2) };
+    let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, ADDRESS_SIZE_BYTES) };
     let mut addr_str = "0x".to_owned();
     addr_str.push_str(&hex::encode(addr_slice));
     let fn_name = runtime::mangle_contract_fn(addr_str.as_str());
@@ -33,7 +80,7 @@ extern "C" fn contract_fn_lookup(
     let ptr = match ptr_lookup {
         Ok(ptr) => ptr,
         Err(e) => {
-            error!("Error looking up contract function: {}", e);
+            error!("Error looking up contract function {}: {}", fn_name, e);
             return 1;
         }
     };
@@ -49,8 +96,6 @@ const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
 pub struct Engine<'ctx> {
     build_manager: Manager<'ctx>,
-    // contract_fn_lookup_val: FunctionValue<'ctx>,
-    // ee_ptr_gbl: GlobalValue<'ctx>,
 }
 
 impl<'ctx> Engine<'ctx> {
@@ -59,23 +104,7 @@ impl<'ctx> Engine<'ctx> {
         let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);
 
-        // let ee_ptr_gbl = build_manager
-        //     .env()
-        //     .module()
-        //     .get_global(runtime::GLOBAL_JIT_ENGINE)
-        //     .unwrap();
-        //
-        // let contract_fn_lookup_val = build_manager
-        //     .env()
-        //     .module()
-        //     .get_function(runtime::FN_NAME_CONTRACT_LOOKUP)
-        //     .unwrap();
-
-        Ok(Engine {
-            build_manager,
-            // contract_fn_lookup_val,
-            // ee_ptr_gbl,
-        })
+        Ok(Engine { build_manager })
     }
 
     fn get_contract_exec_fn(
@@ -141,6 +170,18 @@ impl<'ctx> Engine<'ctx> {
         ee.add_global_mapping(
             &self.build_manager.env().runtime_vals().contract_lookup(),
             contract_fn_lookup as usize,
+        );
+        ee.add_global_mapping(
+            &self.build_manager.env().runtime_vals().contract_new_ctx(),
+            new_contract_ctx as usize,
+        );
+        ee.add_global_mapping(
+            &self
+                .build_manager
+                .env()
+                .runtime_vals()
+                .contract_call_return_data_copy(),
+            jet_contracts_call_return_data_copy as usize,
         );
 
         // Load and run the contract function

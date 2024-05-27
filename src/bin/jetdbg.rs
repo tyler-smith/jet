@@ -92,28 +92,41 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     // ];
 
     let alice_rom = &vec![
-        jet::instructions::PUSH2,
+        jet::instructions::PUSH1, // Output len
+        0x0A,
+        jet::instructions::PUSH1, // Output offset
+        0x00,
+        jet::instructions::PUSH1, // Input len
+        0x00,
+        jet::instructions::PUSH1, // Input offset
+        0x00,
+        jet::instructions::PUSH1, // Value
+        0x00,
+        jet::instructions::PUSH2, // Address
         0x56,
         0x78,
+        jet::instructions::PUSH1, // Gas
+        0x00,
         jet::instructions::CALL,
+        jet::instructions::RETURNDATASIZE,
     ];
 
     let bob_rom = &vec![
         jet::instructions::PUSH1,
         0xFF,
-        // jet::instructions::PUSH1,
-        // 0x01,
-        // jet::instructions::MSTORE,
+        jet::instructions::PUSH1,
+        0x01,
+        jet::instructions::MSTORE,
         // jet::instructions::PUSH1,
         // 0xFF,
         // jet::instructions::PUSH1,
         // 0x1F,
         // jet::instructions::MSTORE8,
-        // jet::instructions::PUSH1,
-        // 0x20,
-        // jet::instructions::PUSH1,
-        // 0x00,
-        // jet::instructions::RETURN,
+        jet::instructions::PUSH1,
+        0x0A,
+        jet::instructions::PUSH1,
+        0x00,
+        jet::instructions::RETURN,
     ];
 
     let context = Context::create();

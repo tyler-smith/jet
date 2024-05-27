@@ -66,6 +66,8 @@ target triple = "x86_64-apple-macosx14.0.0"
 attributes #0 = { alwaysinline nounwind }
 
 declare i8 @jet.contracts.lookup(ptr, ptr, i8*)
+declare %jet.types.exec_ctx* @jet.contracts.new_sub_ctx ()
+declare i8 @jet.contracts.call_return_data_copy(ptr, ptr, i32, i32, i32)
 
 ; Pushes a word onto the stack and incs the stack ptr.
 ; Returns true if the operation was successful, false if the stack is full.
@@ -152,145 +154,24 @@ entry:
   ret i256 %val
 }
 
-; define i1 @jet.mem.copy_to_return (%jet.types.exec_ctx* %ctx, i32 %offset, i32 %length) #0 {
-; entry:
-;   %mem.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
-;   %mem.offset.addr = getelementptr inbounds %jet.types.mem_buf, ptr %mem.addr, i32 0, i32 %offset
-
-;   %return_data.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
-;   ;%return_data.offset.addr = getelementptr inbounds [0 x i8], ptr %return_data.addr, i32 0, i32 %callee_offset_i32
-
-;   call void @llvm.memcpy.p0.p0.i32(ptr %mem.offset.addr, ptr %return_data.addr, i32 %length, i1 false)
-
-;   ret i1 0
-; }
-
-; define i1 @jet.mem.copy_sub_ctx_return (%jet.types.exec_ctx* %caller_ctx, i256 %caller_offset, %jet.types.exec_ctx* %callee_ctx, i256 %callee_offset, i256 %copy_len) #0 {
-; entry:
-;   %caller_offset_i32 = trunc i256 %caller_offset to i32
-;   %callee_offset_i32 = trunc i256 %callee_offset to i32
-
-;   %caller_mem = getelementptr inbounds %jet.types.exec_ctx, ptr %caller_ctx, i32 0, i32 5
-;   %caller_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %caller_mem, i32 0, i32 %caller_offset_i32
-
-;   %callee_mem = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 5
-;   %callee_mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %callee_mem, i32 0, i32 %callee_offset_i32
-
-;   %copy_len_i32 = trunc i256 %copy_len to i32
-;   call void @llvm.memcpy.p0.p0.i32(ptr %caller_mem_loc_ptr, ptr %callee_mem_loc_ptr, i32 %copy_len_i32, i1 false)
-
-;   ret i1 0
-; }
-
-declare %jet.types.exec_ctx* @jet.contracts.new_sub_ctx ()
-;declare %jet.types.exec_ctx* @jet.contracts.new_sub_ctx (%jet.types.exec_ctx* %caller_ctx, i256 %gas, i256 %value, i256 %in_off, i256 %in_len, i256 %out_off, i256 %out_len)
-; define %jet.types.exec_ctx* @jet.contracts.new_sub_ctx (%jet.types.exec_ctx* %caller_ctx, i256 %gas, i256 %value, i256 %in_off, i256 %in_len, i256 %out_off, i256 %out_len) #0 {
-;   ; %mem = alloca %jet.types.mem
-;   ;%ctx = alloca %jet.types.exec_ctx
-;   %ctx = malloc %jet.types.exec_ctx
-
-;   ; %ctx.mem.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
-;   ; store %jet.types.mem* %mem, %jet.types.mem* %ctx.mem.addr
-
-
-;   ; TODO: Add call data to ctx and set it here
-;   ret %jet.types.exec_ctx* %ctx
-; }
-
-; ;define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, i256 %addr) #0 {
-; define i8 @jet.contracts.call_old(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i256 %addr) #0 {
-; ;define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, i256 %addr) #0 {
-;     ;%callee_ctx = call %jet.types.exec_ctx* @jet.contracts.new_sub_ctx()
-
-;     ; Convert the 256bit address to an array of 20 bytes (160 bits)
-;     %addr_i160 = trunc i256 %addr to i160
-;     %addr_i160_ptr = alloca i160, align 8
-;     store i160 %addr_i160, i160* %addr_i160_ptr
-;     %addr_bytes = bitcast i160* %addr_i160_ptr to i8*
-
-;     ; Lookup the function
-;     %fn_ptr_addr = alloca i64*, align 8
-;     %lookup_result = call i8 @jet.contracts.lookup(ptr @jet.jit_engine, ptr %fn_ptr_addr, i8* %addr_bytes)
-;     %success = icmp eq i8 %lookup_result, 0
-;     br i1 %success, label %invoke_fn, label %error_lookup
-
-; invoke_fn:
-;     ; Load the function
-;     %fn_ptr = load i8*, i8** %fn_ptr_addr, align 8
-;     %typed_fn_ptr = bitcast i8* %fn_ptr to %jet.types.contract_fn*
-
-;     ; Call the function
-;     %result = call i8 %typed_fn_ptr(%jet.types.exec_ctx* %callee_ctx)
-;     br i1 %success, label %set_sub_ctx, label %error_invoke
-
-; set_sub_ctx:
-;     %caller.sub_ctx.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %caller_ctx, i32 0, i32 4
-;     store %jet.types.exec_ctx* %callee_ctx, %jet.types.exec_ctx** %caller.sub_ctx.addr
-
-;     %callee.return.len.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 3
-;     %callee.return.len = load i32, i32* %callee.return.len.addr
-;     %callee.return.empty = icmp eq i32 %callee.return.len, 0
-;     br i1 %callee.return.empty, label %return, label %copy_return_data
-
-
-; copy_return_data:
-;     %callee.return.off.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 2
-;     %callee.return.off = load i32, i32* %callee.return.off.addr
-
-;     %ret.copy.result = call i1 @jet.mem.copy_to_return(%jet.types.exec_ctx* %callee_ctx, i32 %ret.off, i32 %ret.len)
-;     br i1 %ret.copy.result, label %return, label %error_return_copy
-
-; error_lookup:
-;     ret i8 1
-; error_invoke:
-;     ret i8 2
-; return:
-;     ret i8 0
-; }
-
-; define i8 @jet.contracts.call_bk(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i256 %addr) #0 {
-; entry:
-;     ; Convert the 256bit address to an array of 20 bytes (160 bits)
-;     %addr_i160 = trunc i256 %addr to i160
-;     %addr_i160_ptr = alloca i160, align 8
-;     store i160 %addr_i160, i160* %addr_i160_ptr
-;     %addr_bytes = bitcast i160* %addr_i160_ptr to i8*
-
-;     ; Lookup the function
-;     %fn_ptr_addr = alloca i64*, align 8
-;     %lookup_result = call i8 @jet.contracts.lookup(ptr @jet.jit_engine, ptr %fn_ptr_addr, i8* %addr_bytes)
-;     %success = icmp eq i8 %lookup_result, 0
-;     br i1 %success, label %invoke_fn, label %return
-; invoke_fn:
-;     ; Load the function
-;     %fn_ptr = load i8*, i8** %fn_ptr_addr, align 8
-;     %typed_fn_ptr = bitcast i8* %fn_ptr to %jet.types.contract_fn*
-
-;     ; Call the function
-;     %result = call i8 %typed_fn_ptr(%jet.types.exec_ctx* %callee_ctx)
-;     br i1 %success, label %set_sub_ctx, label %return
-; set_sub_ctx:
-;     %caller.sub_ctx.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %caller_ctx, i32 0, i32 4
-;     store %jet.types.exec_ctx* %callee_ctx, %jet.types.exec_ctx** %caller.sub_ctx.addr
-
-;     %callee.return.len.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 3
-;     %callee.return.len = load i32, i32* %callee.return.len.addr
-;     %callee.return.empty = icmp eq i32 %callee.return.len, 0
-;     br return
-; return:
-;     %r = phi i8 [0, %set_sub_ctx], [2, %invoke_fn], [3, %entry]
-;     ret i8 %r
-; }
-
-
-declare i8 @jet.helpers.copy_return_data(ptr, ptr, i32, i32, i32)
-
-define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i256 %addr, i32 %ret.off, i32 %ret.len) #0 {
+; @jet.contracts.call implements an internal call to another contract.
+; Parameters:
+;   %caller_ctx - The context of the calling contract
+;   %callee_ctx - The context of the called contract
+;   %addr - The address of the contract to call
+;   %ret.dest - The offset in the caller's memory to copy to
+;   %ret.len - The length of the data to copy
+; Returns:
+;   0 - Success
+;   1 - Lookup failed
+;   2 - Invocation failed
+;   3 - Return data out of callee's return data bounds
+;   4 - Return data out of caller's memory bounds
+define i8 @jet.contracts.call(%jet.types.exec_ctx* %caller_ctx, %jet.types.exec_ctx* %callee_ctx, i160 %addr, i32 %ret.dest, i32 %ret.len) #0 {
 entry:
-    ; Convert the 256bit address to an array of 20 bytes (160 bits)
-    %addr_i160 = trunc i256 %addr to i160
+    ; Convert the 160bit address to an array of 20 bytes
     %addr_i160_ptr = alloca i160, align 8
-    store i160 %addr_i160, i160* %addr_i160_ptr
+    store i160 %addr, i160* %addr_i160_ptr
     %addr_bytes = bitcast i160* %addr_i160_ptr to i8*
 
     ; Lookup the function
@@ -305,23 +186,19 @@ invoke_fn:
 
     ; Call the function
     %result = call i8 %typed_fn_ptr(%jet.types.exec_ctx* %callee_ctx)
-    br i1 %success, label %set_sub_ctx, label %return
-set_sub_ctx:
+    br i1 %success, label %set_return_info, label %return
+set_return_info:
     %caller.sub_ctx.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %caller_ctx, i32 0, i32 4
     store %jet.types.exec_ctx* %callee_ctx, %jet.types.exec_ctx** %caller.sub_ctx.addr
 
     %callee.return.len.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %callee_ctx, i32 0, i32 3
     %callee.return.len = load i32, i32* %callee.return.len.addr
     %callee.return.empty = icmp eq i32 %callee.return.len, 0
-    br i1 %callee.return.empty, label %return, label %check_return_data_bounds
-check_return_data_bounds:
-    ; TODO: Check if the return data is within bounds
-    br label %copy_return_data
+    br i1 %callee.return.empty, label %return, label %copy_return_data
 copy_return_data:
-    ; %copy.ret = call i8 @jet.helpers.copy_return_data(ptr %caller_ctx, ptr %callee_ctx, i32 %ret.off, i32 %ret.len, i32 %ret.size)
+    %copy.ret = call i8 @jet.contracts.call_return_data_copy(ptr %caller_ctx, ptr %callee_ctx, i32 %ret.dest, i32 %ret.len)
     br label %return
 return:
-    ; %r = phi i8 [0, %set_sub_ctx], [2, %invoke_fn], [3, %entry]
-    ; ret i8 %r
-    ret i8 0
+    %r = phi i8 [%copy.ret, %copy_return_data], [0, %set_return_info], [2, %invoke_fn], [1, %entry]
+    ret i8 %r
 }

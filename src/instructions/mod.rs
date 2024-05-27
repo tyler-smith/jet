@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 pub const STOP: u8 = 0x00;
 pub const ADD: u8 = 0x01;
 pub const MUL: u8 = 0x02;
@@ -38,6 +40,8 @@ pub const CALLVALUE: u8 = 0x34;
 pub const CALLDATALOAD: u8 = 0x35;
 pub const CALLDATASIZE: u8 = 0x36;
 pub const CALLDATACOPY: u8 = 0x37;
+
+pub const RETURNDATASIZE: u8 = 0x3D;
 
 // 0x47-0x4f Undefined
 
@@ -138,3 +142,6 @@ pub const STATICCALL: u8 = 0xFA;
 pub const REVERT: u8 = 0xFD;
 pub const INVALID: u8 = 0xFE;
 pub const SELFDESTRUCT: u8 = 0xFF;
+
+// Instruction groups
+pub const PUSH_RANGE: RangeInclusive<u8> = PUSH1..=PUSH32;

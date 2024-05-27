@@ -68,6 +68,7 @@ pub struct Types<'ctx> {
     // Primitives
     pub i8: inkwell::types::IntType<'ctx>,
     pub i32: inkwell::types::IntType<'ctx>,
+    pub i160: inkwell::types::IntType<'ctx>,
     pub ptr: inkwell::types::PointerType<'ctx>,
 
     // Architecture
@@ -94,6 +95,7 @@ impl<'ctx> Types<'ctx> {
         // Primitives
         let i8 = context.i8_type();
         let i32 = context.i32_type();
+        let i160 = context.custom_width_int_type(160);
         let ptr = context.ptr_type(AddressSpace::default());
 
         // Architecture
@@ -130,6 +132,7 @@ impl<'ctx> Types<'ctx> {
         Self {
             i8,
             i32,
+            i160,
             ptr,
 
             word,
@@ -160,9 +163,10 @@ pub(crate) struct RuntimeValues<'ctx> {
     memory_store_byte: FunctionValue<'ctx>,
     memory_load_word: FunctionValue<'ctx>,
 
-    contract_lookup: FunctionValue<'ctx>,
-    contract_new_ctx: FunctionValue<'ctx>,
+    contract_call_lookup: FunctionValue<'ctx>,
+    contract_call_new_ctx: FunctionValue<'ctx>,
     contract_call: FunctionValue<'ctx>,
+    contract_call_return_data_copy: FunctionValue<'ctx>,
 }
 
 impl<'ctx> RuntimeValues<'ctx> {
@@ -177,9 +181,12 @@ impl<'ctx> RuntimeValues<'ctx> {
         let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
         let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD)?;
 
-        let contract_new_ctx = module.get_function(runtime::FN_NAME_CONTRACT_NEW_SUB_CTX)?;
-        let contract_lookup = module.get_function(runtime::FN_NAME_CONTRACT_LOOKUP)?;
+        let contract_call_new_ctx =
+            module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
+        let contract_call_lookup = module.get_function(runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
         let contract_call = module.get_function(runtime::FN_NAME_CONTRACT_CALL)?;
+        let contract_call_return_data_copy =
+            module.get_function(runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
 
         Some(Self {
             jit_engine,
@@ -192,9 +199,10 @@ impl<'ctx> RuntimeValues<'ctx> {
             memory_store_byte,
             memory_load_word,
 
-            contract_new_ctx,
-            contract_lookup,
+            contract_call_new_ctx,
+            contract_call_lookup,
             contract_call,
+            contract_call_return_data_copy,
         })
     }
 
@@ -227,15 +235,19 @@ impl<'ctx> RuntimeValues<'ctx> {
     }
 
     pub(crate) fn contract_new_ctx(&self) -> FunctionValue<'ctx> {
-        self.contract_new_ctx
+        self.contract_call_new_ctx
     }
 
     pub(crate) fn contract_lookup(&self) -> FunctionValue<'ctx> {
-        self.contract_lookup
+        self.contract_call_lookup
     }
 
     pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
         self.contract_call
+    }
+
+    pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {
+        self.contract_call_return_data_copy
     }
 }
 
