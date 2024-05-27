@@ -3,24 +3,20 @@ use std::fmt;
 use crate::runtime::*;
 
 #[repr(C)]
-pub struct Memory {
-    buf: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
-
-    len: u32,
-    cap: u32,
-}
-
-#[repr(C)]
 pub struct Context {
     stack_ptr: u32,
     jump_ptr: u32,
 
-    return_offset: u32,
-    return_length: u32,
+    return_off: u32,
+    return_len: u32,
+
+    sub_call: usize,
 
     stack: [u8; (WORD_SIZE_BYTES * STACK_SIZE_WORDS) as usize],
 
-    memory: Memory,
+    memory: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
+    memory_len: u32,
+    memory_cap: u32,
 }
 
 impl Context {
@@ -29,14 +25,13 @@ impl Context {
         Context {
             stack_ptr: 0,
             jump_ptr: 0,
-            return_offset: 0,
-            return_length: 0,
+            return_off: 0,
+            return_len: 0,
+            sub_call: 0,
             stack: [0; (WORD_SIZE_BYTES * STACK_SIZE_WORDS) as usize],
-            memory: Memory {
-                buf: init_memory_buf,
-                len: 0,
-                cap: MEMORY_INITIAL_SIZE_WORDS,
-            },
+            memory: init_memory_buf,
+            memory_len: 0,
+            memory_cap: WORD_SIZE_BYTES * STACK_SIZE_WORDS,
         }
     }
 
@@ -48,20 +43,46 @@ impl Context {
         self.jump_ptr
     }
 
-    pub fn return_offset(&self) -> u32 {
-        self.return_offset
+    pub fn return_off(&self) -> u32 {
+        self.return_off
     }
 
-    pub fn return_length(&self) -> u32 {
-        self.return_length
+    pub fn return_len(&self) -> u32 {
+        self.return_len
     }
 
     pub fn stack(&self) -> &[u8] {
         &self.stack
     }
 
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &[u8] {
         &self.memory
+    }
+
+    pub fn memory_mut(&mut self) -> &mut [u8] {
+        &mut self.memory
+    }
+
+    pub fn memory_len(&self) -> u32 {
+        self.memory_len
+    }
+
+    pub fn memory_cap(&self) -> u32 {
+        self.memory_cap
+    }
+
+    pub fn sub_ctx(&self) -> Option<&Context> {
+        if self.sub_call == 0 {
+            return None;
+        }
+        let sub_ctx = unsafe { &*(self.sub_call as *const Context) };
+        Some(sub_ctx)
+    }
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -69,24 +90,23 @@ impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Context:\n  {{ stack_ptr: {}, jump_pointer: {}, return_offset: {}, return_length: {} }}\n",
-            self.stack_ptr, self.jump_ptr, self.return_offset, self.return_length
+            "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {}, return_len: {}, sub_call: {} }}\n",
+            self.stack_ptr, self.jump_ptr, self.return_off, self.return_len, self.sub_call
         )?;
 
         write!(
             f,
             "Memory:\n  {{ len: {}, cap: {} }}\n",
-            self.memory.len, self.memory.cap
+            self.memory_len, self.memory_cap
         )?;
-
         for i in 0..1 {
             let offset = (32 * i) as usize;
-            let end = (offset + 32) as usize;
+            let end = offset + 32;
             write!(
                 f,
                 "  {}: {}\n",
                 i,
-                self.memory.buf[offset..end]
+                self.memory[offset..end]
                     .iter()
                     .take(32)
                     .fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
@@ -111,6 +131,12 @@ impl fmt::Display for Context {
                     .take(32)
                     .fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
             )?;
+        }
+
+        if self.sub_call != 0 {
+            let sub_ctx = unsafe { &*(self.sub_call as *const Context) };
+
+            write!(f, "Sub Call:\n{}", sub_ctx)?;
         }
 
         Ok(())

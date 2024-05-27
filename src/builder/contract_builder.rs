@@ -16,6 +16,7 @@ pub(crate) struct Registers<'ctx> {
     pub(crate) jump_ptr: inkwell::values::PointerValue<'ctx>,
     pub(crate) return_offset: inkwell::values::PointerValue<'ctx>,
     pub(crate) return_length: inkwell::values::PointerValue<'ctx>,
+    pub(crate) sub_call: inkwell::values::PointerValue<'ctx>,
 }
 
 impl<'ctx> Registers<'ctx> {
@@ -33,16 +34,16 @@ impl<'ctx> Registers<'ctx> {
         //     .into();
         let jump_ptr = builder
             .build_struct_gep(t.exec_ctx, exec_ctx, 1, "jump_ptr")
-            .unwrap()
-            .into();
+            .unwrap();
         let return_offset = builder
             .build_struct_gep(t.exec_ctx, exec_ctx, 2, "return_offset")
-            .unwrap()
-            .into();
+            .unwrap();
         let return_length = builder
             .build_struct_gep(t.exec_ctx, exec_ctx, 3, "return_length")
-            .unwrap()
-            .into();
+            .unwrap();
+        let sub_call = builder
+            .build_struct_gep(t.exec_ctx, exec_ctx, 4, "sub_call")
+            .unwrap();
 
         Self {
             exec_ctx,
@@ -50,6 +51,7 @@ impl<'ctx> Registers<'ctx> {
             jump_ptr,
             return_offset,
             return_length,
+            sub_call,
         }
     }
 }
@@ -158,7 +160,7 @@ impl<'ctx> ContractBuilder {
 
         // Declare the function in the module
         let func_type = env.types().contract_fn;
-        let func = env.module().add_function(&name, func_type, None);
+        let func = env.module().add_function(name, func_type, None);
         info!(
             "Created function {} in module {}",
             name,
@@ -262,7 +264,7 @@ impl<'ctx> ContractBuilder {
             trace!("find_code_blocks:   Block at offset {}", block.offset);
             trace!("find_code_blocks:     ROM: {:?}", block.rom);
         }
-        return blocks;
+        blocks
     }
 
     fn build_contract_body<'b>(
@@ -330,13 +332,13 @@ impl<'ctx> ContractBuilder {
             ops::__invalid_jump_return(bctx, &mut vstack)?;
         }
 
-        return Ok(());
+        Ok(())
     }
 
     fn build_code_block<'b>(
         bctx: &BuildCtx<'ctx, 'b>,
         code_block: &CodeBlock,
-        mut vstack: &mut Vec<IntValue<'ctx>>,
+        vstack: &mut Vec<IntValue<'ctx>>,
         jump_block: BasicBlock,
         following_block: Option<&&CodeBlock>,
     ) -> Result<(), BuildError> {
@@ -356,9 +358,7 @@ impl<'ctx> ContractBuilder {
             trace!("loop:     Instruction: {}", current_instruction);
 
             // Handle PUSH<n> instructions
-            if current_instruction >= instructions::PUSH1
-                && current_instruction <= instructions::PUSH32
-            {
+            if instructions::PUSH_RANGE.contains(&current_instruction) {
                 let byte_count = (current_instruction - instructions::PUSH1 + 1) as usize;
                 trace!(
                     "PUSH{} at {} ({}..{})",
@@ -369,75 +369,76 @@ impl<'ctx> ContractBuilder {
                 );
                 trace!("{:?}", &bytecode);
                 // trace!("  {:?}", &bytecode[pc + 1..(pc + byte_count + 1)]);
-                ops::push(bctx, &mut vstack, &bytecode[pc + 1..(pc + byte_count + 1)])?;
+                ops::push(bctx, vstack, &bytecode[pc + 1..(pc + byte_count + 1)])?;
                 pc += 1 + byte_count;
                 continue;
             }
 
             // Handle remaining instructions
             match current_instruction {
-                instructions::STOP => ops::stop(bctx, &mut vstack),
+                instructions::STOP => ops::stop(bctx, vstack),
 
                 // Arithmetic
-                instructions::ADD => ops::add(bctx, &mut vstack),
-                instructions::MUL => ops::mul(bctx, &mut vstack),
-                instructions::SUB => ops::sub(bctx, &mut vstack),
-                instructions::DIV => ops::div(bctx, &mut vstack),
-                instructions::SDIV => ops::sdiv(bctx, &mut vstack),
-                instructions::MOD => ops::_mod(bctx, &mut vstack),
-                instructions::SMOD => ops::smod(bctx, &mut vstack),
-                instructions::ADDMOD => ops::addmod(bctx, &mut vstack),
-                instructions::MULMOD => ops::mulmod(bctx, &mut vstack),
-                instructions::EXP => ops::exp(&bctx),
-                instructions::SIGNEXTEND => ops::signextend(&bctx),
+                instructions::ADD => ops::add(bctx, vstack),
+                instructions::MUL => ops::mul(bctx, vstack),
+                instructions::SUB => ops::sub(bctx, vstack),
+                instructions::DIV => ops::div(bctx, vstack),
+                instructions::SDIV => ops::sdiv(bctx, vstack),
+                instructions::MOD => ops::_mod(bctx, vstack),
+                instructions::SMOD => ops::smod(bctx, vstack),
+                instructions::ADDMOD => ops::addmod(bctx, vstack),
+                instructions::MULMOD => ops::mulmod(bctx, vstack),
+                instructions::EXP => ops::exp(bctx),
+                instructions::SIGNEXTEND => ops::signextend(bctx),
 
                 // Comparisons
-                instructions::LT => ops::lt(bctx, &mut vstack),
-                instructions::GT => ops::gt(bctx, &mut vstack),
-                instructions::SLT => ops::slt(bctx, &mut vstack),
-                instructions::SGT => ops::sgt(bctx, &mut vstack),
-                instructions::EQ => ops::eq(bctx, &mut vstack),
-                instructions::ISZERO => ops::iszero(bctx, &mut vstack),
-                instructions::AND => ops::and(bctx, &mut vstack),
-                instructions::OR => ops::or(bctx, &mut vstack),
-                instructions::XOR => ops::xor(bctx, &mut vstack),
-                instructions::NOT => ops::not(bctx, &mut vstack),
+                instructions::LT => ops::lt(bctx, vstack),
+                instructions::GT => ops::gt(bctx, vstack),
+                instructions::SLT => ops::slt(bctx, vstack),
+                instructions::SGT => ops::sgt(bctx, vstack),
+                instructions::EQ => ops::eq(bctx, vstack),
+                instructions::ISZERO => ops::iszero(bctx, vstack),
+                instructions::AND => ops::and(bctx, vstack),
+                instructions::OR => ops::or(bctx, vstack),
+                instructions::XOR => ops::xor(bctx, vstack),
+                instructions::NOT => ops::not(bctx, vstack),
                 // instructions::BYTE => ops::byte(&bctx),
-                instructions::SHL => ops::shl(bctx, &mut vstack),
-                instructions::SHR => ops::shr(bctx, &mut vstack),
-                instructions::SAR => ops::sar(bctx, &mut vstack),
+                instructions::SHL => ops::shl(bctx, vstack),
+                instructions::SHR => ops::shr(bctx, vstack),
+                instructions::SAR => ops::sar(bctx, vstack),
 
                 // Cryptographic
-                instructions::KECCAK256 => ops::keccak256(&bctx, &mut vstack),
+                instructions::KECCAK256 => ops::keccak256(bctx, vstack),
 
                 // Call data
                 // instructions::CALLVALUE => ops::callvalue(&bctx),
                 // instructions::CALLDATALOAD => ops::calldataload(&bctx),
                 // instructions::CALLDATASIZE => ops::calldatasize(&bctx),
                 // instructions::CALLDATACOPY => ops::calldatacopy(&bctx),
+                instructions::RETURNDATASIZE => ops::returndatasize(bctx, vstack),
 
                 // Runtime
-                instructions::POP => ops::pop(bctx, &mut vstack),
+                instructions::POP => ops::pop(bctx, vstack),
 
-                instructions::MLOAD => ops::mload(bctx, &mut vstack),
-                instructions::MSTORE => ops::mstore(bctx, &mut vstack),
-                instructions::MSTORE8 => ops::mstore8(bctx, &mut vstack),
+                instructions::MLOAD => ops::mload(bctx, vstack),
+                instructions::MSTORE => ops::mstore(bctx, vstack),
+                instructions::MSTORE8 => ops::mstore8(bctx, vstack),
 
-                instructions::JUMP => ops::jump(bctx, &mut vstack, jump_block),
+                instructions::JUMP => ops::jump(bctx, vstack, jump_block),
                 instructions::JUMPI => {
                     if let Some(next_block) = following_block {
-                        ops::jumpi(bctx, &mut vstack, jump_block, next_block.basic_block)
+                        ops::jumpi(bctx, vstack, jump_block, next_block.basic_block)
                     } else {
                         panic!("JUMPI without following block")
                     }
                 }
 
-                instructions::CALL => ops::call(bctx, &mut vstack),
+                instructions::CALL => ops::call(bctx, vstack),
 
-                instructions::RETURN => ops::_return(bctx, &mut vstack),
-                instructions::REVERT => ops::revert(bctx, &mut vstack),
-                instructions::INVALID => ops::invalid(bctx, &mut vstack),
-                instructions::SELFDESTRUCT => ops::selfdestruct(&bctx, &mut vstack),
+                instructions::RETURN => ops::_return(bctx, vstack),
+                instructions::REVERT => ops::revert(bctx, vstack),
+                instructions::INVALID => ops::invalid(bctx, vstack),
+                instructions::SELFDESTRUCT => ops::selfdestruct(bctx, vstack),
 
                 _ => {
                     error!("Unknown instruction: {}", current_instruction);

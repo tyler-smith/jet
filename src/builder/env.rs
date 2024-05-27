@@ -116,6 +116,7 @@ impl<'ctx> Types<'ctx> {
                 jump_ptr.into(),
                 return_offset.into(),
                 return_length.into(),
+                ptr.into(),
                 stack.into(),
                 mem.into(),
             ],
