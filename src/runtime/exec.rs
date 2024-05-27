@@ -102,9 +102,9 @@ impl fmt::Display for Context {
         for i in 0..1 {
             let offset = (32 * i) as usize;
             let end = offset + 32;
-            write!(
+            writeln!(
                 f,
-                "  {}: {}\n",
+                "  {}: {}",
                 i,
                 self.memory[offset..end]
                     .iter()
@@ -118,13 +118,13 @@ impl fmt::Display for Context {
             stack_items = 5;
         }
 
-        write!(f, "Stack:\n")?;
+        writeln!(f, "Stack:")?;
         for i in 0..stack_items {
             let offset = (32 * i) as usize;
-            let end = (offset + 32) as usize;
-            write!(
+            let end = offset + 32;
+            writeln!(
                 f,
-                "  {}: {}\n",
+                "  {}: {}",
                 i,
                 self.stack[offset..end]
                     .iter()
