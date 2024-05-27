@@ -49,8 +49,8 @@ impl TestContractRun {
         let ctx = run.ctx();
         assert_eq!(ctx.stack_ptr(), self.stack_ptr);
         assert_eq!(ctx.jump_ptr(), self.jump_ptr);
-        assert_eq!(ctx.return_offset(), self.return_offset);
-        assert_eq!(ctx.return_length(), self.return_length);
+        assert_eq!(ctx.return_off(), self.return_offset);
+        assert_eq!(ctx.return_len(), self.return_length);
         assert_eq!(ctx.stack_ptr(), self.stack.len() as u32);
 
         let actual_stack = ctx.stack();
