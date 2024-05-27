@@ -2,12 +2,12 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, IntValue};
 use log::{info, trace};
 
-use crate::{ROMIterator, ROMIteratorItem};
 use crate::builder::env::Env;
 use crate::builder::errors::BuildError;
 use crate::builder::ops;
+use crate::instructions;
 // use crate::instructions;
-use crate::instructions::Instruction;
+use crate::instructions::{Instruction, IteratorItem};
 use crate::runtime::ReturnCode;
 
 const VSTACK_INIT_SIZE: usize = 32;
@@ -200,12 +200,12 @@ impl<'ctx> ContractBuilder {
         let mut current_block: &mut CodeBlock = blocks.add(0, create_bb());
         let mut current_block_starting_pc = 0usize;
 
-        for item in ROMIterator::new(bytecode) {
+        for item in instructions::Iterator::new(bytecode) {
             match item {
-                ROMIteratorItem::PushData(pc, data) => {
+                IteratorItem::PushData(pc, data) => {
                     trace!("find_code_blocks: Found push data {:?} at PC {}", data, pc);
                 }
-                ROMIteratorItem::Instr(pc, instr) => {
+                IteratorItem::Instr(pc, instr) => {
                     trace!("find_code_blocks: Found instruction {:?} at PC {}", instr, pc);
                     match instr {
                         // Instructions that terminate a block
@@ -242,7 +242,7 @@ impl<'ctx> ContractBuilder {
                         }
                     }
                 }
-                ROMIteratorItem::Invalid(pc) => {
+                IteratorItem::Invalid(pc) => {
                     trace!("find_code_blocks: Found invalid instruction at PC {}", pc);
                     // TODO: return error
                 }
@@ -351,13 +351,13 @@ impl<'ctx> ContractBuilder {
         // and start a relative PC at 0.
         bctx.builder.position_at_end(code_block.basic_block);
 
-        for item in ROMIterator::new(code_block.rom) {
+        for item in instructions::Iterator::new(code_block.rom) {
             match item {
-                ROMIteratorItem::PushData(_, data) => {
+                IteratorItem::PushData(_, data) => {
                     trace!("loop: Data: {:?}", data);
                     ops::push(bctx, vstack, data)?;
                 }
-                ROMIteratorItem::Instr(_, instr) => {
+                IteratorItem::Instr(_, instr) => {
                     trace!("loop: Instruction: {:?}", instr);
                     match instr {
                         Instruction::STOP => ops::stop(bctx, vstack),
@@ -519,7 +519,7 @@ impl<'ctx> ContractBuilder {
                         Instruction::SWAP16 => { Err(BuildError::UnexpectedInstruction(Instruction::SWAP16)) }
                     }?;
                 }
-                ROMIteratorItem::Invalid(_) => {
+                IteratorItem::Invalid(_) => {
                     trace!("loop: Invalid");
                     return Err(BuildError::UnknownInstruction(0));
                 }
