@@ -262,8 +262,8 @@ impl<'ctx> ContractBuilder {
         trace!("find_code_blocks: Found {} code blocks", blocks.len());
         trace!("find_code_blocks: Bytecode: {:?}", bytecode);
         for block in blocks.iter() {
-            trace!("find_code_blocks:   Block at offset {}", block.offset);
-            trace!("find_code_blocks:     ROM: {:?}", block.rom);
+            trace!("find_code_blocks:   Block at offset {}:", block.offset);
+            trace!("find_code_blocks:   {:?}", block.rom);
         }
         blocks
     }
@@ -429,30 +429,64 @@ impl<'ctx> ContractBuilder {
                         // Not yet implemented
                         //
                         Instruction::BYTE => { Err(BuildError::UnimplementedInstruction(Instruction::BYTE)) }
+
+                        Instruction::ADDRESS => { Err(BuildError::UnimplementedInstruction(Instruction::ADDRESS)) }
+                        Instruction::BALANCE => { Err(BuildError::UnimplementedInstruction(Instruction::BALANCE)) }
+                        Instruction::ORIGIN => { Err(BuildError::UnimplementedInstruction(Instruction::ORIGIN)) }
+                        Instruction::CALLER => { Err(BuildError::UnimplementedInstruction(Instruction::CALLER)) }
                         Instruction::CALLVALUE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLVALUE)) }
                         Instruction::CALLDATALOAD => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATALOAD)) }
                         Instruction::CALLDATASIZE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATASIZE)) }
                         Instruction::CALLDATACOPY => { Err(BuildError::UnimplementedInstruction(Instruction::CALLDATACOPY)) }
+                        Instruction::CODESIZE => { Err(BuildError::UnimplementedInstruction(Instruction::CODESIZE)) }
+                        Instruction::CODECOPY => { Err(BuildError::UnimplementedInstruction(Instruction::CODECOPY)) }
+                        Instruction::GASPRICE => { Err(BuildError::UnimplementedInstruction(Instruction::GASPRICE)) }
+                        Instruction::EXTCODESIZE => { Err(BuildError::UnimplementedInstruction(Instruction::EXTCODESIZE)) }
+                        Instruction::EXTCODECOPY => { Err(BuildError::UnimplementedInstruction(Instruction::EXTCODECOPY)) }
+                        Instruction::EXTCODEHASH => { Err(BuildError::UnimplementedInstruction(Instruction::EXTCODEHASH)) }
+
+                        Instruction::BLOCKHASH => { Err(BuildError::UnimplementedInstruction(Instruction::BLOCKHASH)) }
+                        Instruction::COINBASE => { Err(BuildError::UnimplementedInstruction(Instruction::COINBASE)) }
+                        Instruction::TIMESTAMP => { Err(BuildError::UnimplementedInstruction(Instruction::TIMESTAMP)) }
+                        Instruction::NUMBER => { Err(BuildError::UnimplementedInstruction(Instruction::NUMBER)) }
+                        Instruction::DIFFICULTY => { Err(BuildError::UnimplementedInstruction(Instruction::DIFFICULTY)) }
+                        Instruction::GASLIMIT => { Err(BuildError::UnimplementedInstruction(Instruction::GASLIMIT)) }
+                        Instruction::CHAINID => { Err(BuildError::UnimplementedInstruction(Instruction::CHAINID)) }
+                        Instruction::SELFBALANCE => { Err(BuildError::UnimplementedInstruction(Instruction::SELFBALANCE)) }
+                        Instruction::BASEFEE => { Err(BuildError::UnimplementedInstruction(Instruction::BASEFEE)) }
+                        Instruction::BLOBHASH => { Err(BuildError::UnimplementedInstruction(Instruction::BLOBHASH)) }
+                        Instruction::BLOBBASEFEE => { Err(BuildError::UnimplementedInstruction(Instruction::BLOBBASEFEE)) }
+
                         Instruction::SLOAD => { Err(BuildError::UnimplementedInstruction(Instruction::SLOAD)) }
                         Instruction::SSTORE => { Err(BuildError::UnimplementedInstruction(Instruction::SSTORE)) }
-                        Instruction::GETPC => { Err(BuildError::UnimplementedInstruction(Instruction::GETPC)) }
+
+                        Instruction::PC => { Err(BuildError::UnimplementedInstruction(Instruction::PC)) }
                         Instruction::MSIZE => { Err(BuildError::UnimplementedInstruction(Instruction::MSIZE)) }
                         Instruction::GAS => { Err(BuildError::UnimplementedInstruction(Instruction::GAS)) }
+
+                        Instruction::TLOAD => { Err(BuildError::UnimplementedInstruction(Instruction::TLOAD)) }
+                        Instruction::TSTORE => { Err(BuildError::UnimplementedInstruction(Instruction::TSTORE)) }
+
+                        Instruction::MCOPY => { Err(BuildError::UnimplementedInstruction(Instruction::MCOPY)) }
+
                         Instruction::LOG0 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG0)) }
                         Instruction::LOG1 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG1)) }
                         Instruction::LOG2 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG2)) }
                         Instruction::LOG3 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG3)) }
                         Instruction::LOG4 => { Err(BuildError::UnimplementedInstruction(Instruction::LOG4)) }
+
                         Instruction::CREATE => { Err(BuildError::UnimplementedInstruction(Instruction::CREATE)) }
+                        Instruction::CREATE2 => { Err(BuildError::UnimplementedInstruction(Instruction::CREATE2)) }
+
                         Instruction::CALLCODE => { Err(BuildError::UnimplementedInstruction(Instruction::CALLCODE)) }
                         Instruction::DELEGATECALL => { Err(BuildError::UnimplementedInstruction(Instruction::DELEGATECALL)) }
-                        Instruction::CREATE2 => { Err(BuildError::UnimplementedInstruction(Instruction::CREATE2)) }
                         Instruction::STATICCALL => { Err(BuildError::UnimplementedInstruction(Instruction::STATICCALL)) }
 
                         //
                         // We should handle all of these before here
                         //
                         Instruction::JUMPDEST => { Err(BuildError::UnexpectedInstruction(Instruction::JUMPDEST)) }
+                        Instruction::PUSH0 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH0)) }
                         Instruction::PUSH1 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH1)) }
                         Instruction::PUSH2 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH2)) }
                         Instruction::PUSH3 => { Err(BuildError::UnexpectedInstruction(Instruction::PUSH3)) }

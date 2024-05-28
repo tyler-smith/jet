@@ -48,6 +48,7 @@ instructions! {
     MULMOD = 0x09,
     EXP = 0x0A,
     SIGNEXTEND = 0x0B,
+
     LT = 0x10,
     GT = 0x11,
     SLT = 0x12,
@@ -62,13 +63,38 @@ instructions! {
     SHL = 0x1B,
     SHR = 0x1C,
     SAR = 0x1D,
+
     KECCAK256 = 0x20,
+
+    ADDRESS = 0x30,
+    BALANCE = 0x31,
+    ORIGIN = 0x32,
+    CALLER = 0x33,
     CALLVALUE = 0x34,
     CALLDATALOAD = 0x35,
     CALLDATASIZE = 0x36,
     CALLDATACOPY = 0x37,
+    CODESIZE = 0x38,
+    CODECOPY = 0x39,
+    GASPRICE = 0x3A,
+    EXTCODESIZE = 0x3B,
+    EXTCODECOPY = 0x3C,
     RETURNDATASIZE = 0x3D,
     RETURNDATACOPY = 0x3E,
+    EXTCODEHASH = 0x3F,
+
+    BLOCKHASH = 0x40,
+    COINBASE = 0x41,
+    TIMESTAMP = 0x42,
+    NUMBER = 0x43,
+    DIFFICULTY = 0x44,
+    GASLIMIT = 0x45,
+    CHAINID = 0x46,
+    SELFBALANCE = 0x47,
+    BASEFEE= 0x48,
+    BLOBHASH = 0x49,
+    BLOBBASEFEE = 0x4A,
+
     POP = 0x50,
     MLOAD = 0x51,
     MSTORE = 0x52,
@@ -77,10 +103,14 @@ instructions! {
     SSTORE = 0x55,
     JUMP = 0x56,
     JUMPI = 0x57,
-    GETPC = 0x58,
+    PC = 0x58,
     MSIZE = 0x59,
     GAS = 0x5A,
     JUMPDEST = 0x5B,
+    TLOAD = 0x5C,
+    TSTORE = 0x5D,
+    MCOPY = 0x5E,
+    PUSH0 = 0x5F,
     PUSH1 = 0x60,
     PUSH2 = 0x61,
     PUSH3 = 0x62,
@@ -164,7 +194,7 @@ instructions! {
 
 impl Instruction {
     pub fn is_push(&self) -> bool {
-        (Self::PUSH1..=Self::PUSH32).contains(self)
+        (Self::PUSH0..=Self::PUSH32).contains(self)
     }
 }
 
@@ -197,28 +227,27 @@ impl<'a> std::iter::Iterator for Iterator<'a> {
             return None;
         }
 
+        let pc = self.pc;
+
         // If the next byte isn't a valid instruction, return an error
-        let current_byte = self.rom[self.pc];
+        let current_byte = self.rom[pc];
         let instr = Instruction::try_from(current_byte);
         let instr = if let Ok(instr) = instr {
             instr
         } else {
-            return Some(IteratorItem::Invalid(self.pc));
+            return Some(IteratorItem::Invalid(pc));
         };
 
         // If the instruction is not a PUSH then increment the PC and return the instruction
         if !instr.is_push() {
-            let pc = self.pc;
             self.pc += 1;
             return Some(IteratorItem::Instr(pc, instr));
         };
 
         // We have a PUSH instruction, so emit the next N bytes
-        let push_len = instr as usize - Instruction::PUSH1 as usize + 1;
+        let push_len = instr as usize - Instruction::PUSH0 as usize;
         let data = &self.rom[self.pc + 1..self.pc + 1 + push_len];
-        let pc = self.pc;
         self.pc += push_len + 1;
         Some(IteratorItem::PushData(pc, data))
     }
 }
-
