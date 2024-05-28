@@ -12,23 +12,23 @@ pub const STORAGE_INITIAL_SIZE_WORDS: u32 = 1024;
 pub const SUB_CALL_RETURN_MAX_SIZE_WORDS: u32 = 1024;
 
 // Globals
-pub const GLOBAL_NAME_JIT_ENGINE: &'static str = "jet.jit_engine";
+pub const GLOBAL_NAME_JIT_ENGINE: &str = "jet.jit_engine";
 
 // Function names
-pub const FN_NAME_CONTRACT_PREFIX: &'static str = "jet.contracts.";
+pub const FN_NAME_CONTRACT_PREFIX: &str = "jet.contracts.";
 
-pub const FN_NAME_STACK_PUSH_WORD: &'static str = "jet.stack.push.word";
-pub const FN_NAME_STACK_PUSH_BYTES: &'static str = "jet.stack.push.bytes";
-pub const FN_NAME_STACK_POP: &'static str = "jet.stack.pop";
+pub const FN_NAME_STACK_PUSH_WORD: &str = "jet.stack.push.word";
+pub const FN_NAME_STACK_PUSH_BYTES: &str = "jet.stack.push.bytes";
+pub const FN_NAME_STACK_POP: &str = "jet.stack.pop";
 
-pub const FN_NAME_MEM_STORE_WORD: &'static str = "jet.mem.store.word";
-pub const FN_NAME_MEM_STORE_BYTE: &'static str = "jet.mem.store.byte";
-pub const FN_NAME_MEM_LOAD: &'static str = "jet.mem.load";
+pub const FN_NAME_MEM_STORE_WORD: &str = "jet.mem.store.word";
+pub const FN_NAME_MEM_STORE_BYTE: &str = "jet.mem.store.byte";
+pub const FN_NAME_MEM_LOAD: &str = "jet.mem.load";
 
-pub const FN_NAME_CONTRACT_CALL_NEW_SUB_CTX: &'static str = "jet.contracts.new_sub_ctx";
-pub const FN_NAME_CONTRACT_CALL_LOOKUP: &'static str = "jet.contracts.lookup";
-pub const FN_NAME_CONTRACT_CALL: &'static str = "jet.contracts.call";
-pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &'static str =
+pub const FN_NAME_CONTRACT_CALL_NEW_SUB_CTX: &str = "jet.contracts.new_sub_ctx";
+pub const FN_NAME_CONTRACT_CALL_LOOKUP: &str = "jet.contracts.lookup";
+pub const FN_NAME_CONTRACT_CALL: &str = "jet.contracts.call";
+pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &str =
     "jet.contracts.call_return_data_copy";
 
 pub fn mangle_contract_fn(address: &str) -> String {

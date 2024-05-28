@@ -1,3 +1,4 @@
+// use core::slice::SlicePattern;
 use std::fmt::Display;
 
 use clap::{Parser, Subcommand};
@@ -9,7 +10,7 @@ use jet::instructions::Instruction;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
-struct CLI {
+struct Cli {
     #[command(subcommand)]
     cmd: Option<Commands>,
 
@@ -93,7 +94,7 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     //     42,
     // ];
 
-    let alice_rom = &vec![
+    let alice_rom = [
         Instruction::PUSH1.opcode(), // Output len
         0x0A,
         Instruction::PUSH1.opcode(), // Output offset
@@ -117,10 +118,9 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         0x00,
         Instruction::PUSH1.opcode(), // Dest offset
         0x04,
-        Instruction::RETURNDATACOPY.opcode(),
-    ];
+        Instruction::RETURNDATACOPY.opcode()];
 
-    let bob_rom = &vec![
+    let bob_rom = [
         Instruction::PUSH1.opcode(),
         0xFF,
         Instruction::PUSH1.opcode(),
@@ -135,14 +135,13 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         0x0A,
         Instruction::PUSH1.opcode(),
         0x00,
-        Instruction::RETURN.opcode(),
-    ];
+        Instruction::RETURN.opcode()];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
-    engine.build_contract("0x1234", alice_rom)?;
-    engine.build_contract("0x5678", bob_rom)?;
+    engine.build_contract("0x1234", alice_rom.as_slice())?;
+    engine.build_contract("0x5678", bob_rom.as_slice())?;
     let run = engine.run_contract("0x1234")?;
     // let run = engine.run_contract("0x1234")?;
     info!("{}", run);
@@ -156,7 +155,7 @@ enum Commands {
 }
 
 fn main() -> Result<(), Error> {
-    let cli = CLI::parse();
+    let cli = Cli::parse();
 
     // Configure logger
     let logger = match cli.log_level {

@@ -13,8 +13,8 @@ use crate::{
 
 // Stdlib callers
 //
-pub(crate) fn __call_stack_push_word<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+pub(crate) fn __call_stack_push_word<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     value: IntValue<'ctx>,
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
@@ -25,8 +25,8 @@ pub(crate) fn __call_stack_push_word<'ctx, 'b>(
     )
 }
 
-fn __call_stack_push_bytes<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __call_stack_push_bytes<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     value: ArrayValue<'ctx>,
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
@@ -37,7 +37,7 @@ fn __call_stack_push_bytes<'ctx, 'b>(
     )
 }
 
-fn __call_stack_pop<'ctx, 'b>(bctx: &BuildCtx<'ctx, 'b>) -> Result<IntValue<'ctx>, BuildError> {
+fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, BuildError> {
     let stack_pop_word_result_a = bctx.builder.build_call(
         bctx.env.runtime_vals().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
@@ -49,8 +49,8 @@ fn __call_stack_pop<'ctx, 'b>(bctx: &BuildCtx<'ctx, 'b>) -> Result<IntValue<'ctx
 
 // Helpers
 //
-pub(crate) fn __sync_vstack<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+pub(crate) fn __sync_vstack<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
     for value in vstack.iter() {
@@ -60,8 +60,8 @@ pub(crate) fn __sync_vstack<'ctx, 'b>(
     Ok(())
 }
 
-fn __stack_push_word<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __stack_push_word<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
     value: IntValue<'ctx>,
 ) -> Result<(), BuildError> {
@@ -106,8 +106,8 @@ fn __stack_push_bytes<'ctx, 'b>(
     Ok(())
 }
 
-fn __stack_pop_1<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __stack_pop_1<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<IntValue<'ctx>, BuildError> {
     if bctx.env.opts().vstack() {
@@ -125,8 +125,8 @@ fn __stack_pop_1<'ctx, 'b>(
     Ok(a)
 }
 
-fn __stack_pop_2<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __stack_pop_2<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(IntValue<'ctx>, IntValue<'ctx>), BuildError> {
     if bctx.env.opts().vstack() {
@@ -155,8 +155,8 @@ fn __stack_pop_2<'ctx, 'b>(
     Ok((a, b))
 }
 
-fn __stack_pop_3<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __stack_pop_3<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(IntValue<'ctx>, IntValue<'ctx>, IntValue<'ctx>), BuildError> {
     if bctx.env.opts().vstack() {
@@ -194,8 +194,8 @@ fn __stack_pop_3<'ctx, 'b>(
     Ok((a, b, c))
 }
 
-fn __stack_pop_7<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn __stack_pop_7<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<
     (

@@ -1,9 +1,12 @@
 use inkwell::context::Context;
 
-use jet::builder::env::Mode::Debug;
-use jet::builder::env::Options;
-use jet::builder::errors::BuildError;
-use jet::runtime::{exec, ReturnCode};
+use jet::{
+    builder::{
+        env::{Mode::Debug, Options},
+        errors::BuildError,
+    },
+    runtime::{exec, ReturnCode},
+};
 
 #[macro_export]
 macro_rules! rom_tests {

@@ -43,7 +43,7 @@ impl<'ctx> Manager<'ctx> {
 
     fn verify_contract(&self, addr: &str) -> bool {
         let func_name = crate::runtime::mangle_contract_fn(addr);
-        let f = self.build_env.module().get_function(&*func_name).unwrap();
+        let f = self.build_env.module().get_function(&func_name).unwrap();
         f.verify(true)
     }
 
@@ -64,12 +64,12 @@ impl<'ctx> Manager<'ctx> {
 
         let s = self.build_env.module().print_to_string().to_string();
 
-        println!("");
+        println!();
         for line in LinesWithEndings::from(s.as_str()) {
             let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
             let escaped = as_24_bit_terminal_escaped(&ranges[..], true);
             print!("    {}", escaped);
         }
-        println!("");
+        println!();
     }
 }
