@@ -212,14 +212,14 @@ impl<'a> Iterator<'a> {
     }
 }
 
-pub enum IteratorItem<'a> {
+pub enum IteratorItem {
     Instr(usize, Instruction),
-    PushData(usize, &'a [u8]),
+    PushData(usize, [u8; 32]),
     Invalid(usize),
 }
 
 impl<'a> std::iter::Iterator for Iterator<'a> {
-    type Item = IteratorItem<'a>;
+    type Item = IteratorItem;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Stop iterating if we're at the end of the ROM
@@ -227,15 +227,11 @@ impl<'a> std::iter::Iterator for Iterator<'a> {
             return None;
         }
 
-        let pc = self.pc;
-
         // If the next byte isn't a valid instruction, return an error
-        let current_byte = self.rom[pc];
-        let instr = Instruction::try_from(current_byte);
-        let instr = if let Ok(instr) = instr {
-            instr
-        } else {
-            return Some(IteratorItem::Invalid(pc));
+        let pc = self.pc;
+        let instr = match Instruction::try_from(self.rom[pc]) {
+            Ok(instr) => instr,
+            Err(_) => return Some(IteratorItem::Invalid(pc)),
         };
 
         // If the instruction is not a PUSH then increment the PC and return the instruction
@@ -246,7 +242,11 @@ impl<'a> std::iter::Iterator for Iterator<'a> {
 
         // We have a PUSH instruction, so emit the next N bytes
         let push_len = instr as usize - Instruction::PUSH0 as usize;
-        let data = &self.rom[self.pc + 1..self.pc + 1 + push_len];
+        let data = {
+            let mut data = [0; 32];
+            data[..push_len].copy_from_slice(&self.rom[pc + 1..pc + 1 + push_len]);
+            data
+        };
         self.pc += push_len + 1;
         Some(IteratorItem::PushData(pc, data))
     }

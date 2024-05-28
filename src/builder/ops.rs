@@ -77,23 +77,21 @@ fn __stack_push_word<'ctx, 'b>(
 fn __stack_push_bytes<'ctx, 'b>(
     bctx: &'b BuildCtx<'ctx, 'b>,
     vstack: &'b mut Vec<IntValue<'ctx>>,
-    bytes: &[u8],
+    bytes: [u8; 32],
 ) -> Result<(), BuildError> {
     let t = bctx.env.types();
 
-    // Create an array of 32 bytes
-    let mut byte_values: [IntValue; 32] = [t.i8.const_zero(); 32];
-    for (i, byte) in bytes.iter().enumerate() {
-        byte_values[i] = t.i8.const_int(*byte as u64, false);
-    }
-    let byte_array = bctx.env.types().i8.const_array(&byte_values);
+    let values = bytes.iter().map(|byte|
+        t.i8.const_int(*byte as u64, false)
+    ).collect::<Vec<_>>();
+    let value_array = t.i8.const_array(&values);
 
     if bctx.env.opts().vstack() {
         // To push to the vstack, we need to push the bytes as a single word (i256) value
         let arr_ptr = bctx
             .builder
             .build_alloca(bctx.env.types().i8.array_type(32), "stack_bytes_ptr")?;
-        bctx.builder.build_store(arr_ptr, byte_array)?;
+        bctx.builder.build_store(arr_ptr, value_array)?;
         let word = bctx.builder.build_load(t.word, arr_ptr, "stack_word")?;
 
         vstack.push(word.into_int_value());
@@ -101,7 +99,7 @@ fn __stack_push_bytes<'ctx, 'b>(
         return Ok(());
     }
 
-    __call_stack_push_bytes(bctx, byte_array)?;
+    __call_stack_push_bytes(bctx, value_array)?;
 
     Ok(())
 }
@@ -305,7 +303,7 @@ pub(crate) fn __build_return<'ctx, 'b>(
 pub(crate) fn push<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     vstack: &mut Vec<IntValue<'ctx>>,
-    bytes: &[u8],
+    bytes: [u8; 32],
 ) -> Result<(), BuildError> {
     __stack_push_bytes(bctx, vstack, bytes)
 }
