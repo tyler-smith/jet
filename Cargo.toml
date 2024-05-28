@@ -1,7 +1,7 @@
 cargo-features = ["edition2024"]
 
 [package]
-name = "JetVM"
+name = "Jet"
 edition = "2024"
 license = "MIT"
 authors = ["Tyler Smith"]

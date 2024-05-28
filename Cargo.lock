@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "JetVM"
+name = "Jet"
 version = "0.1.0"
 dependencies = [
  "clap",
