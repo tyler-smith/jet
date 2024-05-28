@@ -1,12 +1,16 @@
 use std::str::FromStr;
 
-use inkwell::AddressSpace;
-use inkwell::context::Context;
-use inkwell::module::Module;
-use inkwell::values::{FunctionValue, GlobalValue};
+use inkwell::{
+    context::Context,
+    module::Module,
+    values::{FunctionValue, GlobalValue},
+    AddressSpace,
+};
 
-use crate::runtime;
-use crate::runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS};
+use crate::{
+    runtime,
+    runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS},
+};
 
 const PACK_STRUCTS: bool = true;
 

@@ -1,20 +1,20 @@
 use std::error::Error;
 
-use inkwell::context::Context;
-use inkwell::execution_engine::{ExecutionEngine, JitFunction};
-use inkwell::memory_buffer::MemoryBuffer;
-use inkwell::module::Module;
-use inkwell::OptimizationLevel;
+use inkwell::{
+    context::Context,
+    execution_engine::{ExecutionEngine, JitFunction},
+    memory_buffer::MemoryBuffer,
+    module::Module,
+    OptimizationLevel,
+};
 // use inkwell::values::{FunctionValue, GlobalValue};
 use log::{error, info, trace};
 
-use crate::builder::env;
-use crate::builder::env::Env;
-use crate::builder::errors::BuildError;
-use crate::builder::manager::Manager;
-use crate::runtime;
-use crate::runtime::{ADDRESS_SIZE_BYTES, exec};
-use crate::runtime::exec::ContractFunc;
+use crate::{
+    builder::{env, env::Env, errors::BuildError, manager::Manager},
+    runtime,
+    runtime::{exec, exec::ContractFunc, ADDRESS_SIZE_BYTES},
+};
 
 extern "C" fn jet_contracts_call_return_data_copy(
     ctx: *mut exec::Context,
@@ -32,7 +32,6 @@ extern "C" fn jet_contracts_call_return_data_copy(
     let mem_len = sub_ctx.memory_len();
 
     trace!("jet_contracts_call_return_data_copy:\ndest_offset: {}\nrequested_ret_len: {}\n\nret_offset: {}\nret_len: {}\nmem_len: {}", dest_offset, requested_ret_len, ret_offset, ret_len, mem_len);
-
 
     // Bounds checks for the memory and return data
     if src_offset + requested_ret_len > ret_len {

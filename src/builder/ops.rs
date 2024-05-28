@@ -1,14 +1,16 @@
-use inkwell::basic_block::BasicBlock;
-use inkwell::builder::BuilderError;
-use inkwell::values::{ArrayValue, AsValueRef, CallSiteValue, IntValue};
+use inkwell::{
+    basic_block::BasicBlock,
+    builder::BuilderError,
+    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue},
+};
 use log::trace;
 
-use crate::builder::contract_builder::BuildCtx;
-use crate::builder::errors::BuildError;
-use crate::instructions::Instruction;
-use crate::runtime::ReturnCode;
+use crate::{
+    builder::{contract_builder::BuildCtx, errors::BuildError},
+    instructions::Instruction,
+    runtime::ReturnCode,
+};
 
-//
 // Stdlib callers
 //
 pub(crate) fn __call_stack_push_word<'ctx, 'b>(
@@ -45,7 +47,6 @@ fn __call_stack_pop<'ctx, 'b>(bctx: &BuildCtx<'ctx, 'b>) -> Result<IntValue<'ctx
     Ok(a)
 }
 
-//
 // Helpers
 //
 pub(crate) fn __sync_vstack<'ctx, 'b>(
@@ -81,9 +82,10 @@ fn __stack_push_bytes<'ctx, 'b>(
 ) -> Result<(), BuildError> {
     let t = bctx.env.types();
 
-    let values = bytes.iter().map(|byte|
-        t.i8.const_int(*byte as u64, false)
-    ).collect::<Vec<_>>();
+    let values = bytes
+        .iter()
+        .map(|byte| t.i8.const_int(*byte as u64, false))
+        .collect::<Vec<_>>();
     let value_array = t.i8.const_array(&values);
 
     if bctx.env.opts().vstack() {
@@ -297,7 +299,6 @@ pub(crate) fn __build_return<'ctx, 'b>(
     Ok(())
 }
 
-//
 // OPCode implementations
 //
 pub(crate) fn push<'ctx, 'b>(
@@ -663,12 +664,12 @@ pub(crate) fn returndatacopy<'ctx, 'b>(
         unsafe { inkwell::values::PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
 
     // Truncate parameters to correct bit sizes
-    let dest_off = bctx
-        .builder
-        .build_int_truncate(dest_off, bctx.env.types().i32, "return_data_dest_off")?;
-    let src_off = bctx
-        .builder
-        .build_int_truncate(src_off, bctx.env.types().i32, "return_data_src_off")?;
+    let dest_off =
+        bctx.builder
+            .build_int_truncate(dest_off, bctx.env.types().i32, "return_data_dest_off")?;
+    let src_off =
+        bctx.builder
+            .build_int_truncate(src_off, bctx.env.types().i32, "return_data_src_off")?;
     let len = bctx
         .builder
         .build_int_truncate(len, bctx.env.types().i32, "return_data_len")?;
@@ -685,7 +686,6 @@ pub(crate) fn returndatacopy<'ctx, 'b>(
         ],
         "return_data_copy",
     )?;
-
 
     Ok(())
 }
@@ -793,9 +793,9 @@ pub(crate) fn call<'ctx, 'b>(
     let to = bctx
         .builder
         .build_int_truncate(to, bctx.env.types().i160, "call_to")?;
-    let out_off = bctx
-        .builder
-        .build_int_truncate(out_off, bctx.env.types().i32, "call_out_offset")?;
+    let out_off =
+        bctx.builder
+            .build_int_truncate(out_off, bctx.env.types().i32, "call_out_offset")?;
     let out_len = bctx
         .builder
         .build_int_truncate(out_len, bctx.env.types().i32, "call_out_len")?;
@@ -856,5 +856,7 @@ pub(crate) fn selfdestruct<'ctx, 'b>(
     _bctx: &BuildCtx<'ctx, 'b>,
     _vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), BuildError> {
-    Err(BuildError::UnimplementedInstruction(Instruction::SELFDESTRUCT))
+    Err(BuildError::UnimplementedInstruction(
+        Instruction::SELFDESTRUCT,
+    ))
 }

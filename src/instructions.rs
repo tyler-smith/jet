@@ -205,10 +205,7 @@ pub struct Iterator<'a> {
 
 impl<'a> Iterator<'a> {
     pub fn new(rom: &'a [u8]) -> Self {
-        Self {
-            pc: 0,
-            rom,
-        }
+        Self { pc: 0, rom }
     }
 }
 

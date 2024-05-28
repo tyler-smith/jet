@@ -1,12 +1,12 @@
 use log::info;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Color, Style, ThemeSet};
-use syntect::parsing::SyntaxSet;
-use syntect::util::{as_24_bit_terminal_escaped, LinesWithEndings};
+use syntect::{
+    easy::HighlightLines,
+    highlighting::{Color, Style, ThemeSet},
+    parsing::SyntaxSet,
+    util::{as_24_bit_terminal_escaped, LinesWithEndings},
+};
 
-use crate::builder::contract_builder::ContractBuilder;
-use crate::builder::env::Env;
-use crate::builder::errors::BuildError;
+use crate::builder::{contract_builder::ContractBuilder, env::Env, errors::BuildError};
 
 pub struct Manager<'ctx> {
     build_env: Env<'ctx>,
