@@ -5,7 +5,7 @@ use inkwell::{
 use log::{info, trace};
 
 use crate::{
-    builder::{env::Env, Error, ops},
+    builder::{env::Env, ops, Error},
     instructions,
     instructions::{Instruction, IteratorItem},
     runtime::ReturnCode,

@@ -780,7 +780,7 @@ pub(crate) fn call<'ctx>(
     // Create sub call context
     let call_ctx =
         bctx.builder
-            .build_call(bctx.env.runtime_vals().contract_new_ctx(), &[], "call_ctx")?;
+            .build_call(bctx.env.runtime_vals().new_exec_ctx(), &[], "call_ctx")?;
     let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(call_ctx.as_value_ref()) };
 
     // Truncate parameters to correct bit sizes

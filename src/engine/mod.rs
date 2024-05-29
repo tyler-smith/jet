@@ -13,83 +13,12 @@ use crate::{
     builder,
     builder::{env, env::Env, manager::Manager},
     runtime,
-    runtime::{ADDRESS_SIZE_BYTES, exec, exec::ContractFunc},
+    runtime::{
+        exec,
+        exec::{ContractFunc, ContractRun},
+        functions,
+    },
 };
-
-#[no_mangle]
-pub extern "C" fn jet_contracts_call_return_data_copy(
-    ctx: *mut exec::Context,
-    sub_ctx: *const exec::Context,
-    dest_offset: u32,
-    src_offset: u32,
-    requested_ret_len: u32,
-) -> u8 {
-    let ctx = unsafe { &mut *ctx };
-    let sub_ctx = unsafe { &*sub_ctx };
-
-    // Get return and memory data from the callee
-    let ret_offset = sub_ctx.return_off();
-    let ret_len = sub_ctx.return_len();
-    let mem_len = sub_ctx.memory_len();
-
-    trace!("jet_contracts_call_return_data_copy:\ndest_offset: {}\nrequested_ret_len: {}\n\nret_offset: {}\nret_len: {}\nmem_len: {}", dest_offset, requested_ret_len, ret_offset, ret_len, mem_len);
-
-    // Bounds checks for the memory and return data
-    if src_offset + requested_ret_len > ret_len {
-        return 3;
-    }
-    let ret_offset_end = ret_offset + requested_ret_len;
-    if ret_offset_end > ret_len {
-        return 4;
-    }
-    // TODO: Enable this check after adding memory len handling
-    // if ret_offset_end > mem_len {
-    //     return 3;
-    // }
-
-    // Copy the data
-    let src_range = src_offset as usize..(src_offset + requested_ret_len) as usize;
-    let dest_range = dest_offset as usize..(dest_offset + requested_ret_len) as usize;
-    let dest = &mut ctx.memory_mut()[dest_range];
-    dest.copy_from_slice(&sub_ctx.return_data()[src_range]);
-    0
-}
-
-#[no_mangle]
-pub extern "C" fn new_contract_ctx() -> usize {
-    let ctx = exec::Context::new();
-    Box::into_raw(Box::new(ctx)) as usize
-}
-
-#[no_mangle]
-pub extern "C" fn contract_fn_lookup(
-    jit_engine: *const ExecutionEngine,
-    out: *mut usize,
-    addr: usize,
-) -> i8 {
-    // Convert the address to a function name
-    let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, ADDRESS_SIZE_BYTES) };
-    let mut addr_str = "0x".to_owned();
-    addr_str.push_str(&hex::encode(addr_slice));
-    let fn_name = runtime::functions::mangle_contract_fn(addr_str.as_str());
-
-    // Look up the function pointer
-    let ee = unsafe { &*jit_engine };
-    let ptr_lookup = ee.get_function_address(fn_name.as_str());
-    let ptr = match ptr_lookup {
-        Ok(ptr) => ptr,
-        Err(e) => {
-            error!("Error looking up contract function {}: {}", fn_name, e);
-            return 1;
-        }
-    };
-
-    // Write the function pointer to the output buffer and return success
-    unsafe {
-        *out = ptr;
-    }
-    0
-}
 
 const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
@@ -154,59 +83,54 @@ impl<'ctx> Engine<'ctx> {
         // }
     }
 
-    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, Error> {
-        let ee = self
+    pub fn run_contract(&self, addr: &str) -> Result<ContractRun, Error> {
+        // Create a JIT execution engine
+        let jit = self
             .build_manager
             .env()
             .module()
-            .create_jit_execution_engine(OptimizationLevel::None)
-            .unwrap();
-
-        // Inject the JIT instance and contract lookup function into the runtime
-        let ee_ptr = &ee as *const ExecutionEngine as usize;
-
-        ee.add_global_mapping(
-            &self.build_manager.env().runtime_vals().jit_engine(),
-            ee_ptr,
-        );
-        ee.add_global_mapping(
-            &self.build_manager.env().runtime_vals().contract_lookup(),
-            contract_fn_lookup as usize,
-        );
-        ee.add_global_mapping(
-            &self.build_manager.env().runtime_vals().contract_new_ctx(),
-            new_contract_ctx as usize,
-        );
-        ee.add_global_mapping(
-            &self
-                .build_manager
-                .env()
-                .runtime_vals()
-                .contract_call_return_data_copy(),
-            jet_contracts_call_return_data_copy as usize,
-        );
+            .create_jit_execution_engine(OptimizationLevel::None)?;
+        self.link_in_runtime(&jit);
 
         // Load and run the contract function
-        let contract_exec_fn = self.get_contract_exec_fn(&ee, addr);
-        let contract_exec_fn = match contract_exec_fn {
+        let contract_exec_fn = match self.get_contract_exec_fn(&jit, addr) {
             Ok(f) => f,
             Err(e) => {
                 return Err(Error::FunctionLookup(e));
             }
         };
+
         trace!("Running function...");
         let ctx = exec::Context::new();
         let result = unsafe { contract_exec_fn.call(&ctx as *const exec::Context) };
         trace!("Function returned");
 
-        Ok(exec::ContractRun::new(result, ctx))
+        Ok(ContractRun::new(result, ctx))
+    }
+
+    fn link_in_runtime(&self, ee: &ExecutionEngine) {
+        let vals = self.build_manager.env().runtime_vals();
+
+        // Link in the JIT engine
+        let ee_ptr = ee as *const ExecutionEngine as usize;
+        ee.add_global_mapping(&vals.jit_engine(), ee_ptr);
+
+        // Link in runtime functions
+        ee.add_global_mapping(
+            &vals.contract_exec_fn_lookup(),
+            functions::jet_contract_exec_fn_lookup as usize,
+        );
+        ee.add_global_mapping(&vals.new_exec_ctx(), functions::jet_new_exec_ctx as usize);
+        ee.add_global_mapping(
+            &vals.contract_call_return_data_copy(),
+            functions::jet_contract_call_return_data_copy as usize,
+        );
     }
 }
 
 fn load_runtime_module(context: &Context) -> Result<Module, Error> {
     let file_path = std::path::Path::new(RUNTIME_IR_FILE);
     let ir = MemoryBuffer::create_from_file(file_path)?;
-
     let module = context.create_module_from_ir(ir)?;
     Ok(module)
 }

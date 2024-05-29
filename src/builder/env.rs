@@ -167,7 +167,7 @@ pub(crate) struct RuntimeValues<'ctx> {
     memory_store_byte: FunctionValue<'ctx>,
     memory_load_word: FunctionValue<'ctx>,
 
-    contract_call_lookup: FunctionValue<'ctx>,
+    contract_exec_fn_lookup: FunctionValue<'ctx>,
     contract_call_new_ctx: FunctionValue<'ctx>,
     contract_call: FunctionValue<'ctx>,
     contract_call_return_data_copy: FunctionValue<'ctx>,
@@ -204,7 +204,7 @@ impl<'ctx> RuntimeValues<'ctx> {
             memory_load_word,
 
             contract_call_new_ctx,
-            contract_call_lookup,
+            contract_exec_fn_lookup: contract_call_lookup,
             contract_call,
             contract_call_return_data_copy,
         })
@@ -238,16 +238,16 @@ impl<'ctx> RuntimeValues<'ctx> {
         self.memory_load_word
     }
 
-    pub(crate) fn contract_new_ctx(&self) -> FunctionValue<'ctx> {
+    pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
+        self.contract_call
+    }
+
+    pub(crate) fn new_exec_ctx(&self) -> FunctionValue<'ctx> {
         self.contract_call_new_ctx
     }
 
-    pub(crate) fn contract_lookup(&self) -> FunctionValue<'ctx> {
-        self.contract_call_lookup
-    }
-
-    pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
-        self.contract_call
+    pub(crate) fn contract_exec_fn_lookup(&self) -> FunctionValue<'ctx> {
+        self.contract_exec_fn_lookup
     }
 
     pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {
