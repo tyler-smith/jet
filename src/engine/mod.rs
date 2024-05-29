@@ -3,8 +3,8 @@ use inkwell::{
     execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
     memory_buffer::MemoryBuffer,
     module::Module,
-    OptimizationLevel,
     support::LLVMString,
+    OptimizationLevel,
 };
 use log::{error, info, trace};
 use thiserror::Error;
