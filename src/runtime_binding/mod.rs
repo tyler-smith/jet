@@ -52,10 +52,10 @@ impl fmt::Display for exec::Context {
 
         match self.sub_ctx() {
             Some(sub_ctx) => {
-                write!(f, "Sub Call:\n{}", sub_ctx)?;
+                writeln!(f, "Sub Call:\n{}", sub_ctx)?;
             }
             None => {
-                write!(f, "Sub Call: None\n")?;
+                writeln!(f, "Sub Call: None")?;
             }
         }
 

@@ -18,6 +18,7 @@ pub struct Context {
 }
 
 impl Context {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let init_memory_buf = [0u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize];
         Context {
