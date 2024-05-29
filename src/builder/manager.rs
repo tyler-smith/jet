@@ -22,7 +22,7 @@ impl<'ctx> Manager<'ctx> {
     }
 
     pub fn add_contract_function(&self, addr: &str, rom: &[u8]) -> Result<(), Error> {
-        let func_name = crate::runtime::mangle_contract_fn(addr);
+        let func_name = crate::runtime::functions::mangle_contract_fn(addr);
         info!("Building ROM into function {}", func_name);
 
         ContractBuilder::build(&self.build_env, &func_name, rom)?;
@@ -42,7 +42,7 @@ impl<'ctx> Manager<'ctx> {
     }
 
     fn verify_contract(&self, addr: &str) -> bool {
-        let func_name = crate::runtime::mangle_contract_fn(addr);
+        let func_name = crate::runtime::functions::mangle_contract_fn(addr);
         let f = self.build_env.module().get_function(&func_name).unwrap();
         f.verify(true)
     }

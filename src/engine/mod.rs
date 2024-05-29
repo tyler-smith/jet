@@ -16,7 +16,8 @@ use crate::{
     runtime::{ADDRESS_SIZE_BYTES, exec, exec::ContractFunc},
 };
 
-extern "C" fn jet_contracts_call_return_data_copy(
+#[no_mangle]
+pub extern "C" fn jet_contracts_call_return_data_copy(
     ctx: *mut exec::Context,
     sub_ctx: *const exec::Context,
     dest_offset: u32,
@@ -54,12 +55,14 @@ extern "C" fn jet_contracts_call_return_data_copy(
     0
 }
 
-extern "C" fn new_contract_ctx() -> usize {
+#[no_mangle]
+pub extern "C" fn new_contract_ctx() -> usize {
     let ctx = exec::Context::new();
     Box::into_raw(Box::new(ctx)) as usize
 }
 
-extern "C" fn contract_fn_lookup(
+#[no_mangle]
+pub extern "C" fn contract_fn_lookup(
     jit_engine: *const ExecutionEngine,
     out: *mut usize,
     addr: usize,
@@ -68,7 +71,7 @@ extern "C" fn contract_fn_lookup(
     let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, ADDRESS_SIZE_BYTES) };
     let mut addr_str = "0x".to_owned();
     addr_str.push_str(&hex::encode(addr_slice));
-    let fn_name = runtime::mangle_contract_fn(addr_str.as_str());
+    let fn_name = runtime::functions::mangle_contract_fn(addr_str.as_str());
 
     // Look up the function pointer
     let ee = unsafe { &*jit_engine };
@@ -116,7 +119,7 @@ impl<'ctx> Engine<'ctx> {
         ee: &ExecutionEngine<'ctx>,
         addr: &str,
     ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
-        let name = runtime::mangle_contract_fn(addr);
+        let name = runtime::functions::mangle_contract_fn(addr);
         info!("Looking up contract function {}", name);
         unsafe { ee.get_function(name.as_str()) }
     }

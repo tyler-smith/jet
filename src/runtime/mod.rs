@@ -1,4 +1,5 @@
 pub mod exec;
+pub(crate) mod functions;
 
 // System architecture; These are defined by the EVM
 pub const WORD_SIZE_BITS: u32 = 256;
@@ -29,10 +30,6 @@ pub const FN_NAME_CONTRACT_CALL_NEW_SUB_CTX: &str = "jet.contracts.new_sub_ctx";
 pub const FN_NAME_CONTRACT_CALL_LOOKUP: &str = "jet.contracts.lookup";
 pub const FN_NAME_CONTRACT_CALL: &str = "jet.contracts.call";
 pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &str = "jet.contracts.call_return_data_copy";
-
-pub fn mangle_contract_fn(address: &str) -> String {
-    format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)
-}
 
 // Return codes returned by contract function calls.
 // - Negative values are Jet-level failures.
