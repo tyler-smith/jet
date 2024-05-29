@@ -11,6 +11,19 @@ use crate::{
     runtime::ReturnCode,
 };
 
+type StackPop1<'ctx> = IntValue<'ctx>;
+type StackPop2<'ctx> = (IntValue<'ctx>, IntValue<'ctx>);
+type StackPop3<'ctx> = (IntValue<'ctx>, IntValue<'ctx>, IntValue<'ctx>);
+type StackPop7<'ctx> = (
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+    IntValue<'ctx>,
+);
+
 // Stdlib callers
 //
 pub(crate) fn __call_stack_push_word<'ctx>(
@@ -49,6 +62,7 @@ fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, E
 
 // Helpers
 //
+
 pub(crate) fn __sync_vstack<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
@@ -78,7 +92,7 @@ fn __stack_push_word<'ctx>(
 fn __stack_pop_1<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<IntValue<'ctx>, Error> {
+) -> Result<StackPop1<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -97,7 +111,7 @@ fn __stack_pop_1<'ctx>(
 fn __stack_pop_2<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(IntValue<'ctx>, IntValue<'ctx>), Error> {
+) -> Result<StackPop2<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -127,7 +141,7 @@ fn __stack_pop_2<'ctx>(
 fn __stack_pop_3<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(IntValue<'ctx>, IntValue<'ctx>, IntValue<'ctx>), Error> {
+) -> Result<StackPop3<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -163,22 +177,10 @@ fn __stack_pop_3<'ctx>(
     Ok((a, b, c))
 }
 
-#[allow(clippy::type_complexity)]
 fn __stack_pop_7<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<
-    (
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-        IntValue<'ctx>,
-    ),
-    Error,
-> {
+) -> Result<StackPop7<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
