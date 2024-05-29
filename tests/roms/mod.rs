@@ -53,6 +53,7 @@ pub(crate) struct TestContractRun {
     pub(crate) return_offset: u32,
     pub(crate) return_length: u32,
     pub(crate) stack: Vec<[u8; 32]>,
+    pub(crate) memory: Option<Vec<u8>>,
 }
 
 impl TestContractRun {
@@ -72,6 +73,11 @@ impl TestContractRun {
             let mut actual_word = [0; 32];
             actual_word[..].copy_from_slice(actual_stack[idx..idx + 32].as_ref());
             assert_eq!(actual_word, *expected_word);
+        }
+
+        if let Some(expected_memory) = &self.memory {
+            let actual_memory = &ctx.memory()[..expected_memory.len()];
+            assert_eq!(actual_memory, expected_memory.as_slice());
         }
     }
 }

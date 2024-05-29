@@ -99,5 +99,59 @@ rom_tests! {
             return_length: 0x20,
             ..Default::default()
         },
-    }
+    },
+
+    basic_call_with_return_data: Test {
+        roms: vec![vec![
+            Instruction::PUSH1.opcode(), // Output len
+            0x0A,
+            Instruction::PUSH1.opcode(), // Output offset
+            0x00,
+            Instruction::PUSH1.opcode(), // Input len
+            0x00,
+            Instruction::PUSH1.opcode(), // Input offset
+            0x00,
+            Instruction::PUSH1.opcode(), // Value
+            0x00,
+            Instruction::PUSH2.opcode(), // Address
+            0x00,
+            0x01,
+            Instruction::PUSH1.opcode(), // Gas
+            0x00,
+            Instruction::CALL.opcode(), // Mem: 0x00FF
+            Instruction::RETURNDATASIZE.opcode(),
+            Instruction::PUSH1.opcode(), // Len
+            0x02,
+            Instruction::PUSH1.opcode(), // Src offset
+            0x00,
+            Instruction::PUSH1.opcode(), // Dest offset
+            0x02,
+            Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
+        ], vec![
+            Instruction::PUSH1.opcode(),
+            0xFF,
+            Instruction::PUSH1.opcode(),
+            0x01,
+            Instruction::MSTORE.opcode(), // Mem: 0x00FF
+            Instruction::PUSH1.opcode(),
+            0xFF,
+            Instruction::PUSH1.opcode(),
+            0x0A,
+            Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
+            Instruction::PUSH1.opcode(),
+            0x0A,
+            Instruction::PUSH1.opcode(),
+            0x00,
+            Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
+        ]],
+        expected: TestContractRun {
+            stack_ptr: 2,
+            stack: vec![
+                stack_word(&[0x00]),
+                stack_word(&[0x0A])
+            ],
+            memory: Some(vec![0x00, 0xFF, 0x00, 0xFF]),
+            ..Default::default()
+        },
+    },
 }
