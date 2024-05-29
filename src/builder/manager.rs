@@ -6,7 +6,10 @@ use syntect::{
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
 
-use crate::builder::{contract, env::Env, Error};
+use crate::{
+    builder::{contract, env::Env, Error},
+    runtime::functions,
+};
 
 pub struct Manager<'ctx> {
     build_env: Env<'ctx>,
@@ -22,14 +25,10 @@ impl<'ctx> Manager<'ctx> {
     }
 
     pub fn add_contract_function(&self, addr: &str, rom: &[u8]) -> Result<(), Error> {
-        let func_name = crate::runtime::functions::mangle_contract_fn(addr);
-        info!("Building ROM into function {}", func_name);
+        let fn_name = functions::mangle_contract_fn(addr);
+        info!("Building ROM into function {}", fn_name);
 
-        contract::build(&self.build_env, &func_name, rom)?;
-
-        if self.build_env.opts().emit_llvm() {
-            self.print_ir();
-        }
+        contract::build(&self.build_env, &fn_name, rom)?;
 
         if self.build_env.opts().assert() {
             if !self.verify_contract(addr) {
@@ -38,6 +37,9 @@ impl<'ctx> Manager<'ctx> {
             self.build_env.module().verify()?;
         }
 
+        if self.build_env.opts().emit_llvm() {
+            self.print_ir();
+        }
         Ok(())
     }
 
