@@ -95,10 +95,7 @@ fn __stack_pop_1<'ctx>(
 ) -> Result<StackPop1<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
-            Some(a) => {
-                trace!("Popping from vstack: {:?}", a);
-                a
-            }
+            Some(a) => a,
             None => __call_stack_pop(bctx)?,
         };
         return Ok(a);
@@ -114,17 +111,11 @@ fn __stack_pop_2<'ctx>(
 ) -> Result<StackPop2<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
-            Some(a) => {
-                trace!("Popping from vstack: {:?}", a);
-                a
-            }
+            Some(a) => a,
             None => __call_stack_pop(bctx)?,
         };
         let b = match vstack.pop() {
-            Some(b) => {
-                trace!("Popping from vstack: {:?}", b);
-                b
-            }
+            Some(b) => b,
             None => __call_stack_pop(bctx)?,
         };
         return Ok((a, b));
@@ -132,8 +123,6 @@ fn __stack_pop_2<'ctx>(
 
     let a = __call_stack_pop(bctx)?;
     let b = __call_stack_pop(bctx)?;
-    let a = unsafe { IntValue::new(a.as_value_ref()) };
-    let b = unsafe { IntValue::new(b.as_value_ref()) };
 
     Ok((a, b))
 }
@@ -144,24 +133,15 @@ fn __stack_pop_3<'ctx>(
 ) -> Result<StackPop3<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
-            Some(a) => {
-                trace!("Popping from vstack: {:?}", a);
-                a
-            }
+            Some(a) => a,
             None => __call_stack_pop(bctx)?,
         };
         let b = match vstack.pop() {
-            Some(b) => {
-                trace!("Popping from vstack: {:?}", b);
-                b
-            }
+            Some(b) => b,
             None => __call_stack_pop(bctx)?,
         };
         let c = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(c) => c,
             None => __call_stack_pop(bctx)?,
         };
         return Ok((a, b, c));
@@ -170,9 +150,6 @@ fn __stack_pop_3<'ctx>(
     let a = __call_stack_pop(bctx)?;
     let b = __call_stack_pop(bctx)?;
     let c = __call_stack_pop(bctx)?;
-    let a = unsafe { IntValue::new(a.as_value_ref()) };
-    let b = unsafe { IntValue::new(b.as_value_ref()) };
-    let c = unsafe { IntValue::new(c.as_value_ref()) };
 
     Ok((a, b, c))
 }
@@ -183,52 +160,31 @@ fn __stack_pop_7<'ctx>(
 ) -> Result<StackPop7<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
-            Some(a) => {
-                trace!("Popping from vstack: {:?}", a);
-                a
-            }
+            Some(a) => a,
             None => __call_stack_pop(bctx)?,
         };
         let b = match vstack.pop() {
-            Some(b) => {
-                trace!("Popping from vstack: {:?}", b);
-                b
-            }
+            Some(b) => b,
             None => __call_stack_pop(bctx)?,
         };
         let c = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(c) => c,
             None => __call_stack_pop(bctx)?,
         };
         let d = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(d) => d,
             None => __call_stack_pop(bctx)?,
         };
         let e = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(e) => e,
             None => __call_stack_pop(bctx)?,
         };
         let f = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(f) => f,
             None => __call_stack_pop(bctx)?,
         };
         let g = match vstack.pop() {
-            Some(c) => {
-                trace!("Popping from vstack: {:?}", c);
-                c
-            }
+            Some(g) => g,
             None => __call_stack_pop(bctx)?,
         };
         return Ok((a, b, c, d, e, f, g));
@@ -241,13 +197,6 @@ fn __stack_pop_7<'ctx>(
     let e = __call_stack_pop(bctx)?;
     let f = __call_stack_pop(bctx)?;
     let g = __call_stack_pop(bctx)?;
-    let a = unsafe { IntValue::new(a.as_value_ref()) };
-    let b = unsafe { IntValue::new(b.as_value_ref()) };
-    let c = unsafe { IntValue::new(c.as_value_ref()) };
-    let d = unsafe { IntValue::new(d.as_value_ref()) };
-    let e = unsafe { IntValue::new(e.as_value_ref()) };
-    let f = unsafe { IntValue::new(f.as_value_ref()) };
-    let g = unsafe { IntValue::new(g.as_value_ref()) };
 
     Ok((a, b, c, d, e, f, g))
 }
