@@ -1,10 +1,8 @@
-// use core::slice::SlicePattern;
-use std::fmt::Display;
-
 use clap::{Parser, Subcommand};
 use inkwell::context::Context;
 use log::info;
 use simple_logger::SimpleLogger;
+use thiserror::Error;
 
 use jet::instructions::Instruction;
 
@@ -45,31 +43,12 @@ struct BuildArgs {
     assert: Option<bool>,
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
+#[error(transparent)]
 enum Error {
-    ClapError(clap::Error),
-    BuildError(jet::builder::errors::BuildError),
-}
-
-impl From<clap::Error> for Error {
-    fn from(e: clap::Error) -> Self {
-        Error::ClapError(e)
-    }
-}
-
-impl From<jet::builder::errors::BuildError> for Error {
-    fn from(e: jet::builder::errors::BuildError) -> Self {
-        Error::BuildError(e)
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Error::ClapError(e) => write!(f, "ClapError: {}", e),
-            Error::BuildError(e) => write!(f, "BuildError: {}", e),
-        }
-    }
+    Clap(#[from] clap::Error),
+    Build(#[from] jet::builder::errors::BuildError),
+    Engine(#[from] jet::engine::EngineError),
 }
 
 fn build_cmd(args: BuildArgs) -> Result<(), Error> {
@@ -110,32 +89,34 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         0x78,
         Instruction::PUSH1.opcode(), // Gas
         0x00,
-        Instruction::CALL.opcode(),
+        Instruction::CALL.opcode(), // Mem: 0x00FF
         Instruction::RETURNDATASIZE.opcode(),
         Instruction::PUSH1.opcode(), // Len
         0x02,
         Instruction::PUSH1.opcode(), // Src offset
         0x00,
         Instruction::PUSH1.opcode(), // Dest offset
-        0x04,
-        Instruction::RETURNDATACOPY.opcode()];
+        0x02,
+        Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
+    ];
 
     let bob_rom = [
         Instruction::PUSH1.opcode(),
         0xFF,
         Instruction::PUSH1.opcode(),
         0x01,
-        Instruction::MSTORE.opcode(),
-        // Instruction::PUSH1,
-        // 0xFF,
-        // Instruction::PUSH1,
-        // 0x1F,
-        // Instruction::MSTORE8,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF
+        Instruction::PUSH1.opcode(),
+        0xFF,
+        Instruction::PUSH1.opcode(),
+        0x0A,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
         Instruction::PUSH1.opcode(),
         0x0A,
         Instruction::PUSH1.opcode(),
         0x00,
-        Instruction::RETURN.opcode()];
+        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
+    ];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;

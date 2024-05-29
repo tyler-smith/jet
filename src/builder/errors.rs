@@ -1,10 +1,11 @@
 use std::fmt::Display;
 
 use inkwell::{builder::BuilderError, support::LLVMString};
+use thiserror::Error;
 
 use crate::instructions::Instruction;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum BuildError {
     BuilderError(BuilderError),
     LLVMError(LLVMString),

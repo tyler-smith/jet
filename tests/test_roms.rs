@@ -5,13 +5,13 @@ mod roms;
 
 rom_tests! {
     one_plus_two: Test {
-        rom: vec![
+        roms: vec![vec![
             Instruction::PUSH1.opcode(),
             0x01,
             Instruction::PUSH1.opcode(),
             0x02,
             Instruction::ADD.opcode(),
-        ],
+        ]],
         expected: TestContractRun {
             stack_ptr: 1,
             stack: vec![stack_word(&[0x03])],
@@ -20,14 +20,14 @@ rom_tests! {
     },
 
     basic_jump: Test {
-        rom: vec![
+        roms: vec![vec![
             Instruction::PUSH1.opcode(),
             0x03,
             Instruction::JUMP.opcode(),
             Instruction::JUMPDEST.opcode(),
             Instruction::PUSH1.opcode(),
             42,
-        ],
+        ]],
         expected: TestContractRun {
             stack_ptr: 1,
             jump_ptr: 3,
@@ -37,7 +37,7 @@ rom_tests! {
     },
 
     basic_mem_ops: Test {
-        rom: vec![
+        roms: vec![vec![
             Instruction::PUSH1.opcode(),
             0xFF,
             Instruction::PUSH1.opcode(),
@@ -55,7 +55,7 @@ rom_tests! {
             Instruction::PUSH1.opcode(),
             0x00,
             Instruction::MLOAD.opcode(),
-        ],
+        ]],
         expected: TestContractRun {
             stack_ptr: 2,
             stack: vec![stack_word(&[0x00, 0x00, 0xFF]), stack_word(&[0xFF, 0x00, 0xFF])],
@@ -64,7 +64,7 @@ rom_tests! {
     },
 
     vstack_accesses_real_stack_after_jump: Test{
-        rom: vec![
+        roms: vec![vec![
             Instruction::PUSH1.opcode(),
             0x01,
             Instruction::PUSH1.opcode(),
@@ -76,7 +76,7 @@ rom_tests! {
             Instruction::ADD.opcode(),
             Instruction::PUSH1.opcode(),
             42,
-        ],
+        ]],
         expected: TestContractRun {
             stack_ptr: 2,
             jump_ptr: 7,
@@ -86,13 +86,13 @@ rom_tests! {
     },
 
     return_sets_offset_and_length: Test{
-        rom: vec![
+        roms: vec![vec![
             Instruction::PUSH1.opcode(),
             0x20,
             Instruction::PUSH1.opcode(),
             0x03,
             Instruction::RETURN.opcode(),
-        ],
+        ]],
         expected: TestContractRun {
             result: ReturnCode::ExplicitReturn,
             return_offset: 0x03,

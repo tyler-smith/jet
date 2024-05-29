@@ -1,12 +1,22 @@
 use inkwell::context::Context;
+use log::trace;
+use thiserror::Error;
 
 use jet::{
     builder::{
         env::{Mode::Debug, Options},
         errors::BuildError,
     },
+    engine::EngineError,
     runtime::{exec, ReturnCode},
 };
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    Build(#[from] BuildError),
+    Engine(#[from] EngineError),
+}
 
 #[macro_export]
 macro_rules! rom_tests {
@@ -15,13 +25,13 @@ macro_rules! rom_tests {
         $(
             paste::item! {
                 #[test]
-                fn [<test_rom_with_vstack $name>]() -> Result<(), jet::builder::errors::BuildError> {
+                fn [<test_rom_with_vstack $name>]() -> Result<(), Error> {
                     let t: Test = $test;
                     _test_rom_body(t, true)
                 }
 
                 #[test]
-                fn [<test_rom_with_real_stack $name>]() -> Result<(), jet::builder::errors::BuildError> {
+                fn [<test_rom_with_real_stack $name>]() -> Result<(), Error> {
                     let t: Test = $test;
                     _test_rom_body(t, false)
                 }
@@ -31,7 +41,7 @@ macro_rules! rom_tests {
 }
 
 pub(crate) struct Test {
-    pub(crate) rom: Vec<u8>,
+    pub(crate) roms: Vec<Vec<u8>>,
     pub(crate) expected: TestContractRun,
 }
 
@@ -66,13 +76,20 @@ impl TestContractRun {
     }
 }
 
-pub(crate) fn _test_rom_body(t: Test, use_vstack: bool) -> Result<(), BuildError> {
+pub(crate) fn _test_rom_body(t: Test, use_vstack: bool) -> Result<(), Error> {
     let context = Context::create();
     let opts = Options::new(Debug, use_vstack, false, true);
     let mut engine = jet::engine::Engine::new(&context, opts)?;
 
-    engine.build_contract("0x1234", t.rom.as_slice())?;
-    let run = engine.run_contract("0x1234")?;
+    assert_ne!(t.roms.len(), 0);
+    for (i, rom) in t.roms.iter().enumerate() {
+        let addr = hex::encode(vec![0, i as u8]);
+        let prefixed_addr = format!("0x{}", addr);
+        trace!("Building contract at address {}", prefixed_addr);
+        engine.build_contract(prefixed_addr.as_str(), rom.as_slice())?;
+    }
+
+    let run = engine.run_contract("0x0000")?;
     t.expected.assert_eq(&run);
 
     Ok(())

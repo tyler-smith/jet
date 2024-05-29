@@ -2,18 +2,18 @@ use std::error::Error;
 
 use inkwell::{
     context::Context,
-    execution_engine::{ExecutionEngine, JitFunction},
+    execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
     memory_buffer::MemoryBuffer,
     module::Module,
     OptimizationLevel,
 };
-// use inkwell::values::{FunctionValue, GlobalValue};
 use log::{error, info, trace};
+use thiserror::Error;
 
 use crate::{
     builder::{env, env::Env, errors::BuildError, manager::Manager},
     runtime,
-    runtime::{exec, exec::ContractFunc, ADDRESS_SIZE_BYTES},
+    runtime::{ADDRESS_SIZE_BYTES, exec, exec::ContractFunc},
 };
 
 extern "C" fn jet_contracts_call_return_data_copy(
@@ -90,6 +90,13 @@ extern "C" fn contract_fn_lookup(
 
 const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum EngineError {
+    Build(#[from] BuildError),
+    FunctionLookup(#[from] FunctionLookupError),
+}
+
 pub struct Engine<'ctx> {
     build_manager: Manager<'ctx>,
 }
@@ -107,16 +114,10 @@ impl<'ctx> Engine<'ctx> {
         &self,
         ee: &ExecutionEngine<'ctx>,
         addr: &str,
-    ) -> Option<JitFunction<ContractFunc>> {
-        let name = crate::runtime::mangle_contract_fn(addr);
+    ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
+        let name = runtime::mangle_contract_fn(addr);
         info!("Looking up contract function {}", name);
-        unsafe {
-            let result = ee.get_function(name.as_str());
-            if result.is_err() {
-                error!("Error looking up contract function {}", name);
-            }
-            result.ok()
-        }
+        unsafe { ee.get_function(name.as_str()) }
     }
 
     pub fn build_contract(&mut self, addr: &str, rom: &[u8]) -> Result<(), BuildError> {
@@ -124,7 +125,7 @@ impl<'ctx> Engine<'ctx> {
     }
 
     pub fn keccak256() {
-        
+
         // unsafe fn keccak256(d: &[u8], out: &mut [u8]) {
         // for i in 0..32 {
         //     out[i] = i as u8;
@@ -148,7 +149,7 @@ impl<'ctx> Engine<'ctx> {
         // }
     }
 
-    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, BuildError> {
+    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, EngineError> {
         let ee = self
             .build_manager
             .env()
@@ -181,7 +182,13 @@ impl<'ctx> Engine<'ctx> {
         );
 
         // Load and run the contract function
-        let contract_exec_fn = self.get_contract_exec_fn(&ee, addr).unwrap();
+        let contract_exec_fn = self.get_contract_exec_fn(&ee, addr);
+        let contract_exec_fn = match contract_exec_fn {
+            Ok(f) => f,
+            Err(e) => {
+                return Err(EngineError::FunctionLookup(e));
+            }
+        };
         trace!("Running function...");
         let ctx = exec::Context::new();
         let result = unsafe { contract_exec_fn.call(&ctx as *const exec::Context) };
