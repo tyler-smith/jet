@@ -6,7 +6,7 @@ use syntect::{
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
 
-use crate::builder::{contract_builder::ContractBuilder, env::Env, Error};
+use crate::builder::{contract, env::Env, Error};
 
 pub struct Manager<'ctx> {
     build_env: Env<'ctx>,
@@ -25,7 +25,7 @@ impl<'ctx> Manager<'ctx> {
         let func_name = crate::runtime::functions::mangle_contract_fn(addr);
         info!("Building ROM into function {}", func_name);
 
-        ContractBuilder::build(&self.build_env, &func_name, rom)?;
+        contract::build(&self.build_env, &func_name, rom)?;
 
         if self.build_env.opts().emit_llvm() {
             self.print_ir();

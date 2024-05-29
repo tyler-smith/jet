@@ -6,7 +6,7 @@ use inkwell::{
 use log::trace;
 
 use crate::{
-    builder::{contract_builder::BuildCtx, Error},
+    builder::{contract::BuildCtx, Error},
     instructions::Instruction,
     runtime::ReturnCode,
 };

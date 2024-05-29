@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::instructions::Instruction;
 
-pub mod contract_builder;
+pub mod contract;
 pub mod env;
 pub mod manager;
 pub(crate) mod ops;
