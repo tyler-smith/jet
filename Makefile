@@ -33,6 +33,13 @@ run: ## Run the jetdbg
 test: ## Run package tests
 	cargo test
 
+.PHONY: fmt
+fmt: format ## Format Rust code
+
+.PHONY: format
+format:
+	rustfmt src/**/*.rs
+
 dist:
 	mkdir -p dist
 
