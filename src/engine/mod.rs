@@ -1,17 +1,17 @@
-use std::error::Error;
-
 use inkwell::{
     context::Context,
     execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
     memory_buffer::MemoryBuffer,
     module::Module,
     OptimizationLevel,
+    support::LLVMString,
 };
 use log::{error, info, trace};
 use thiserror::Error;
 
 use crate::{
-    builder::{env, env::Env, errors::BuildError, manager::Manager},
+    builder,
+    builder::{env, env::Env, manager::Manager},
     runtime,
     runtime::{ADDRESS_SIZE_BYTES, exec, exec::ContractFunc},
 };
@@ -92,9 +92,10 @@ const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
 #[derive(Error, Debug)]
 #[error(transparent)]
-pub enum EngineError {
-    Build(#[from] BuildError),
+pub enum Error {
+    Build(#[from] builder::Error),
     FunctionLookup(#[from] FunctionLookupError),
+    LLVM(#[from] LLVMString),
 }
 
 pub struct Engine<'ctx> {
@@ -102,7 +103,7 @@ pub struct Engine<'ctx> {
 }
 
 impl<'ctx> Engine<'ctx> {
-    pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, BuildError> {
+    pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, Error> {
         let runtime_module = load_runtime_module(context).unwrap();
         let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);
@@ -120,8 +121,9 @@ impl<'ctx> Engine<'ctx> {
         unsafe { ee.get_function(name.as_str()) }
     }
 
-    pub fn build_contract(&mut self, addr: &str, rom: &[u8]) -> Result<(), BuildError> {
-        self.build_manager.add_contract_function(addr, rom)
+    pub fn build_contract(&mut self, addr: &str, rom: &[u8]) -> Result<(), Error> {
+        self.build_manager.add_contract_function(addr, rom)?;
+        Ok(())
     }
 
     pub fn keccak256() {
@@ -149,7 +151,7 @@ impl<'ctx> Engine<'ctx> {
         // }
     }
 
-    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, EngineError> {
+    pub fn run_contract(&mut self, addr: &str) -> Result<exec::ContractRun, Error> {
         let ee = self
             .build_manager
             .env()
@@ -186,7 +188,7 @@ impl<'ctx> Engine<'ctx> {
         let contract_exec_fn = match contract_exec_fn {
             Ok(f) => f,
             Err(e) => {
-                return Err(EngineError::FunctionLookup(e));
+                return Err(Error::FunctionLookup(e));
             }
         };
         trace!("Running function...");
@@ -198,9 +200,10 @@ impl<'ctx> Engine<'ctx> {
     }
 }
 
-fn load_runtime_module(context: &Context) -> Result<Module, Box<dyn Error>> {
+fn load_runtime_module(context: &Context) -> Result<Module, Error> {
     let file_path = std::path::Path::new(RUNTIME_IR_FILE);
     let ir = MemoryBuffer::create_from_file(file_path)?;
 
-    Ok(context.create_module_from_ir(ir)?)
+    let module = context.create_module_from_ir(ir)?;
+    Ok(module)
 }

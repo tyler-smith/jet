@@ -6,7 +6,7 @@ use inkwell::{
 use log::trace;
 
 use crate::{
-    builder::{contract_builder::BuildCtx, errors::BuildError},
+    builder::{contract_builder::BuildCtx, Error},
     instructions::Instruction,
     runtime::ReturnCode,
 };
@@ -37,7 +37,7 @@ fn __call_stack_push_bytes<'ctx>(
     )
 }
 
-fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, BuildError> {
+fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, Error> {
     let stack_pop_word_result_a = bctx.builder.build_call(
         bctx.env.runtime_vals().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
@@ -52,7 +52,7 @@ fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, B
 pub(crate) fn __sync_vstack<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     for value in vstack.iter() {
         __call_stack_push_word(bctx, *value)?;
     }
@@ -64,7 +64,7 @@ fn __stack_push_word<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
     value: IntValue<'ctx>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     if bctx.env.opts().vstack() {
         trace!("Pushing to vstack: {:?}", value);
         vstack.push(value);
@@ -78,7 +78,7 @@ fn __stack_push_word<'ctx>(
 fn __stack_pop_1<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<IntValue<'ctx>, BuildError> {
+) -> Result<IntValue<'ctx>, Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -97,7 +97,7 @@ fn __stack_pop_1<'ctx>(
 fn __stack_pop_2<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(IntValue<'ctx>, IntValue<'ctx>), BuildError> {
+) -> Result<(IntValue<'ctx>, IntValue<'ctx>), Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -127,7 +127,7 @@ fn __stack_pop_2<'ctx>(
 fn __stack_pop_3<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(IntValue<'ctx>, IntValue<'ctx>, IntValue<'ctx>), BuildError> {
+) -> Result<(IntValue<'ctx>, IntValue<'ctx>, IntValue<'ctx>), Error> {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
             Some(a) => {
@@ -177,7 +177,7 @@ fn __stack_pop_7<'ctx>(
         IntValue<'ctx>,
         IntValue<'ctx>,
     ),
-    BuildError,
+    Error,
 > {
     if bctx.env.opts().vstack() {
         let a = match vstack.pop() {
@@ -253,7 +253,7 @@ fn __stack_pop_7<'ctx>(
 pub(crate) fn __invalid_jump_return<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __build_return(bctx, vstack, ReturnCode::InvalidJumpBlock)
 }
 
@@ -261,7 +261,7 @@ pub(crate) fn __build_return<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
     return_value: ReturnCode,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __sync_vstack(bctx, vstack)?;
 
     let return_value = bctx.env.types().i8.const_int(return_value as u64, false);
@@ -275,7 +275,7 @@ pub(crate) fn push<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
     bytes: [u8; 32],
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let t = bctx.env.types();
 
     let values = bytes
@@ -305,14 +305,14 @@ pub(crate) fn push<'ctx>(
 pub(crate) fn stop<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __build_return(bctx, vstack, ReturnCode::Stop)
 }
 
 pub(crate) fn add<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_add(a, b, "add_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -322,7 +322,7 @@ pub(crate) fn add<'ctx>(
 pub(crate) fn mul<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_mul(a, b, "mul_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -332,7 +332,7 @@ pub(crate) fn mul<'ctx>(
 pub(crate) fn sub<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_sub(a, b, "sub_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -342,7 +342,7 @@ pub(crate) fn sub<'ctx>(
 pub(crate) fn div<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     // let result = bctx.builder.build_int_signed_div(a, b, "div_result")?;
     let result = bctx.builder.build_int_unsigned_div(a, b, "div_result")?;
@@ -353,7 +353,7 @@ pub(crate) fn div<'ctx>(
 pub(crate) fn sdiv<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_signed_div(a, b, "sdiv_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -363,7 +363,7 @@ pub(crate) fn sdiv<'ctx>(
 pub(crate) fn _mod<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_unsigned_rem(a, b, "mod_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -373,7 +373,7 @@ pub(crate) fn _mod<'ctx>(
 pub(crate) fn smod<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_int_signed_rem(a, b, "smod_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -383,7 +383,7 @@ pub(crate) fn smod<'ctx>(
 pub(crate) fn addmod<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b, c) = __stack_pop_3(bctx, vstack)?;
     let result = bctx.builder.build_int_add(a, b, "addmod_add_result")?;
     let result = bctx
@@ -396,7 +396,7 @@ pub(crate) fn addmod<'ctx>(
 pub(crate) fn mulmod<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b, c) = __stack_pop_3(bctx, vstack)?;
     let result = bctx.builder.build_int_mul(a, b, "mulmod_mul_result")?;
     let result = bctx
@@ -406,7 +406,7 @@ pub(crate) fn mulmod<'ctx>(
     Ok(())
 }
 
-pub(crate) fn exp(_: &BuildCtx) -> Result<(), BuildError> {
+pub(crate) fn exp(_: &BuildCtx) -> Result<(), Error> {
     Ok(())
     // TODO: Create a pow function in the runtime and use it here
     // let (base, exponent) = stack_pop_2(bctx)?;
@@ -414,7 +414,7 @@ pub(crate) fn exp(_: &BuildCtx) -> Result<(), BuildError> {
     // stack_push_word(bctx, result)?;
 }
 
-pub(crate) fn signextend(_: &BuildCtx) -> Result<(), BuildError> {
+pub(crate) fn signextend(_: &BuildCtx) -> Result<(), Error> {
     // let (a, b) = stack_pop_2(bctx)?;
     // let result = bctx.builder.build_int_s_extend(a, b, "signextend_result")?;
     // stack_push_word(bctx, result)?;
@@ -425,7 +425,7 @@ pub(crate) fn signextend(_: &BuildCtx) -> Result<(), BuildError> {
 pub(crate) fn lt<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx
         .builder
@@ -441,7 +441,7 @@ pub(crate) fn lt<'ctx>(
 pub(crate) fn gt<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx
         .builder
@@ -457,7 +457,7 @@ pub(crate) fn gt<'ctx>(
 pub(crate) fn slt<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx
         .builder
@@ -473,7 +473,7 @@ pub(crate) fn slt<'ctx>(
 pub(crate) fn sgt<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx
         .builder
@@ -489,7 +489,7 @@ pub(crate) fn sgt<'ctx>(
 pub(crate) fn eq<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx
         .builder
@@ -505,7 +505,7 @@ pub(crate) fn eq<'ctx>(
 pub(crate) fn iszero<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let a = __stack_pop_1(bctx, vstack)?;
     let result = bctx.builder.build_int_compare(
         inkwell::IntPredicate::EQ,
@@ -524,7 +524,7 @@ pub(crate) fn iszero<'ctx>(
 pub(crate) fn and<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_and(a, b, "and_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -534,7 +534,7 @@ pub(crate) fn and<'ctx>(
 pub(crate) fn or<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_or(a, b, "or_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -544,7 +544,7 @@ pub(crate) fn or<'ctx>(
 pub(crate) fn xor<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_xor(a, b, "xor_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -554,7 +554,7 @@ pub(crate) fn xor<'ctx>(
 pub(crate) fn not<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let a = __stack_pop_1(bctx, vstack)?;
     let result = bctx.builder.build_not(a, "not_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -570,7 +570,7 @@ pub(crate) fn not<'ctx>(
 pub(crate) fn shl<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_left_shift(a, b, "shl_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -580,7 +580,7 @@ pub(crate) fn shl<'ctx>(
 pub(crate) fn shr<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_right_shift(a, b, false, "shr_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -590,7 +590,7 @@ pub(crate) fn shr<'ctx>(
 pub(crate) fn sar<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
     let result = bctx.builder.build_right_shift(a, b, true, "sar_result")?;
     __stack_push_word(bctx, vstack, result)?;
@@ -600,15 +600,15 @@ pub(crate) fn sar<'ctx>(
 pub(crate) fn keccak256<'ctx>(
     _: &BuildCtx<'ctx, '_>,
     _vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let _ = _vstack;
-    Err(BuildError::UnimplementedInstruction(Instruction::KECCAK256))
+    Err(Error::UnimplementedInstruction(Instruction::KECCAK256))
 }
 
 pub(crate) fn returndatasize<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     // Load sub call ctx
     let sub_call_ctx_ptr = bctx.builder.build_load(
         bctx.env.types().ptr,
@@ -644,7 +644,7 @@ pub(crate) fn returndatasize<'ctx>(
 pub(crate) fn returndatacopy<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (dest_off, src_off, len) = __stack_pop_3(bctx, vstack)?;
 
     // Load sub call ctx
@@ -687,7 +687,7 @@ pub(crate) fn returndatacopy<'ctx>(
 pub(crate) fn pop<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __stack_pop_1(bctx, vstack)?;
     Ok(())
 }
@@ -695,7 +695,7 @@ pub(crate) fn pop<'ctx>(
 pub(crate) fn mload<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let loc = __stack_pop_1(bctx, vstack)?;
     let ret = bctx.builder.build_call(
         bctx.env.runtime_vals().mload(),
@@ -712,7 +712,7 @@ pub(crate) fn mload<'ctx>(
 pub(crate) fn mstore<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
         bctx.env.runtime_vals().mstore(),
@@ -725,7 +725,7 @@ pub(crate) fn mstore<'ctx>(
 pub(crate) fn mstore8<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
         bctx.env.runtime_vals().mstore8(),
@@ -739,7 +739,7 @@ pub(crate) fn jump<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
     jump_block: BasicBlock,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let pc = __stack_pop_1(bctx, vstack)?;
 
     // Cast the 256bit pc to 32bits and store in the jump_ptr
@@ -758,7 +758,7 @@ pub(crate) fn jumpi<'ctx>(
     vstack: &mut Vec<IntValue<'ctx>>,
     jump_block: BasicBlock,
     jump_else_block: BasicBlock,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (pc, b) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_store(bctx.registers.jump_ptr, pc)?;
     let zero = bctx.env.types().word.const_zero();
@@ -773,7 +773,7 @@ pub(crate) fn jumpi<'ctx>(
 pub(crate) fn call<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx, vstack)?;
     // let to = __stack_pop_1(bctx, vstack)?;
 
@@ -821,7 +821,7 @@ pub(crate) fn call<'ctx>(
 pub(crate) fn _return<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let (offset, size) = __stack_pop_2(bctx, vstack)?;
 
     bctx.builder
@@ -835,23 +835,21 @@ pub(crate) fn _return<'ctx>(
 pub(crate) fn revert<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __build_return(bctx, vstack, ReturnCode::Revert)
 }
 
 pub(crate) fn invalid<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     __build_return(bctx, vstack, ReturnCode::Invalid)
 }
 
 pub(crate) fn selfdestruct<'ctx>(
     _bctx: &BuildCtx<'ctx, '_>,
     _vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), BuildError> {
+) -> Result<(), Error> {
     let _ = _vstack;
-    Err(BuildError::UnimplementedInstruction(
-        Instruction::SELFDESTRUCT,
-    ))
+    Err(Error::UnimplementedInstruction(Instruction::SELFDESTRUCT))
 }

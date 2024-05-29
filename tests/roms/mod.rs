@@ -3,19 +3,17 @@ use log::trace;
 use thiserror::Error;
 
 use jet::{
-    builder::{
-        env::{Mode::Debug, Options},
-        errors::BuildError,
-    },
-    engine::EngineError,
+    builder,
+    builder::env::{Mode::Debug, Options},
+    engine,
     runtime::{exec, ReturnCode},
 };
 
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub(crate) enum Error {
-    Build(#[from] BuildError),
-    Engine(#[from] EngineError),
+    Build(#[from] builder::errors::Error),
+    Engine(#[from] engine::Error),
 }
 
 #[macro_export]

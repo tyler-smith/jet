@@ -47,8 +47,8 @@ struct BuildArgs {
 #[error(transparent)]
 enum Error {
     Clap(#[from] clap::Error),
-    Build(#[from] jet::builder::errors::BuildError),
-    Engine(#[from] jet::engine::EngineError),
+    Build(#[from] jet::builder::Error),
+    Engine(#[from] jet::engine::Error),
 }
 
 fn build_cmd(args: BuildArgs) -> Result<(), Error> {
@@ -58,20 +58,6 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.emit_llvm.unwrap_or(true),
         args.assert.unwrap_or(true),
     );
-
-    // let test_rom = &vec![
-    //     Instruction::PUSH1,
-    //     0x01,
-    //     Instruction::PUSH1,
-    //     0x02,
-    //     Instruction::PUSH1,
-    //     0x07,
-    //     Instruction::JUMP,
-    //     Instruction::JUMPDEST,
-    //     Instruction::ADD,
-    //     Instruction::PUSH1,
-    //     42,
-    // ];
 
     let alice_rom = [
         Instruction::PUSH1.opcode(), // Output len
@@ -124,7 +110,6 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     engine.build_contract("0x1234", alice_rom.as_slice())?;
     engine.build_contract("0x5678", bob_rom.as_slice())?;
     let run = engine.run_contract("0x1234")?;
-    // let run = engine.run_contract("0x1234")?;
     info!("{}", run);
 
     Ok(())
