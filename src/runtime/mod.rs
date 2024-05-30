@@ -31,6 +31,8 @@ pub const FN_NAME_CONTRACT_CALL_LOOKUP: &str = "jet.contracts.lookup";
 pub const FN_NAME_CONTRACT_CALL: &str = "jet.contracts.call";
 pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &str = "jet.contracts.call_return_data_copy";
 
+pub const FN_NAME_KECCAK256: &str = "jet.ops.keccak256";
+
 // Return codes returned by contract function calls.
 // - Negative values are Jet-level failures.
 // - Positive values are successfully captured EVM-returns.

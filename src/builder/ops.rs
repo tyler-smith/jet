@@ -549,11 +549,33 @@ pub(crate) fn sar<'ctx>(
 }
 
 pub(crate) fn keccak256<'ctx>(
-    _: &BuildCtx<'ctx, '_>,
-    _vstack: &mut Vec<IntValue<'ctx>>,
+    ctx: &BuildCtx<'ctx, '_>,
+    vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), Error> {
-    let _ = _vstack;
-    Err(Error::UnimplementedInstruction(Instruction::KECCAK256))
+    let data = __stack_pop_1(ctx, vstack)?;
+
+    let word_t = ctx.env.types().word;
+
+    // TODO: This should be optimized to avoid unnecessary memory usage by e.g.
+    // using a pointer to the data instead of copying it
+    let data_ptr = ctx.builder.build_alloca(word_t, "keccak256_ptr")?;
+    ctx.builder.build_store(data_ptr, data)?;
+
+    // TODO: Check return code
+    ctx.builder.build_call(
+        ctx.env.runtime_vals().keccak256(),
+        &[data_ptr.into()],
+        "keccak256",
+    )?;
+
+    let hash = {
+        let h = ctx.builder.build_load(word_t, data_ptr, "keccak256_out")?;
+        let h_value_ref = h.as_value_ref();
+        unsafe { IntValue::new(h_value_ref) }
+    };
+
+    __stack_push_word(ctx, vstack, hash)?;
+    Ok(())
 }
 
 pub(crate) fn returndatasize<'ctx>(

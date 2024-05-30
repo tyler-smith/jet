@@ -30,6 +30,7 @@ target triple = "x86_64-apple-macosx14.0.0"
 declare i8 @jet.contracts.lookup(ptr, ptr, i8*)
 declare %jet.types.exec_ctx* @jet.contracts.new_sub_ctx ()
 declare i8 @jet.contracts.call_return_data_copy(ptr, ptr, i32, i32, i32)
+declare i8 @jet.ops.keccak256(ptr)
 
 ;
 ; Types

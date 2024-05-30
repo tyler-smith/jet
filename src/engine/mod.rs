@@ -3,8 +3,8 @@ use inkwell::{
     execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
     memory_buffer::MemoryBuffer,
     module::Module,
-    support::LLVMString,
     OptimizationLevel,
+    support::LLVMString,
 };
 use log::{error, info, trace};
 use thiserror::Error;
@@ -58,31 +58,6 @@ impl<'ctx> Engine<'ctx> {
         Ok(())
     }
 
-    pub fn keccak256() {
-
-        // unsafe fn keccak256(d: &[u8], out: &mut [u8]) {
-        // for i in 0..32 {
-        //     out[i] = i as u8;
-        // }
-
-        // // Read 32 bytes from d into a byte array
-        // let mut bytes = [0u8; 32];
-        // for i in 0..32 {
-        //     bytes[i] = d[i];
-        // }
-        //
-        // // Hash the bytes
-        // use sha3::{Digest, Keccak256};
-        // let mut hasher = Keccak256::new();
-        // hasher.update(d);
-        // let hash = hasher.finalize();
-        //
-        // // Write the hash to the output buffer
-        // for i in 0..32 {
-        //     out[i] = hash[i];
-        // }
-    }
-
     pub fn run_contract(&self, addr: &str) -> Result<ContractRun, Error> {
         // Create a JIT execution engine
         let jit = self
@@ -125,6 +100,7 @@ impl<'ctx> Engine<'ctx> {
             &vals.contract_call_return_data_copy(),
             functions::jet_contract_call_return_data_copy as usize,
         );
+        ee.add_global_mapping(&vals.keccak256(), functions::jet_ops_keccak256 as usize);
     }
 }
 

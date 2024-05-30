@@ -1,7 +1,7 @@
 use inkwell::execution_engine::ExecutionEngine;
 use log::{error, trace};
 
-use crate::runtime::{exec, ADDRESS_SIZE_BYTES, FN_NAME_CONTRACT_PREFIX};
+use crate::runtime::{ADDRESS_SIZE_BYTES, exec, FN_NAME_CONTRACT_PREFIX};
 
 pub fn mangle_contract_fn(address: &str) -> String {
     format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)
@@ -80,4 +80,19 @@ pub extern "C" fn jet_contract_call_return_data_copy(
 pub extern "C" fn jet_new_exec_ctx() -> usize {
     let ctx = exec::Context::new();
     Box::into_raw(Box::new(ctx)) as usize
+}
+
+#[no_mangle]
+pub extern "C" fn jet_ops_keccak256(buffer: &mut [u8; 32]) -> u8 {
+    // Hash the bytes
+    use sha3::{Digest, Keccak256};
+    let mut hasher = Keccak256::new();
+    hasher.update(buffer.clone());
+    let hash = hasher.finalize();
+
+    // Write the hash back to the buffer
+    for i in 0..32 {
+        buffer[i] = hash[i];
+    }
+    0
 }

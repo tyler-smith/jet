@@ -60,55 +60,15 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     );
 
     let alice_rom = [
-        Instruction::PUSH1.opcode(), // Output len
-        0x0A,
-        Instruction::PUSH1.opcode(), // Output offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Input len
-        0x00,
-        Instruction::PUSH1.opcode(), // Input offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Value
-        0x00,
-        Instruction::PUSH2.opcode(), // Address
-        0x56,
-        0x78,
-        Instruction::PUSH1.opcode(), // Gas
-        0x00,
-        Instruction::CALL.opcode(), // Mem: 0x00FF
-        Instruction::RETURNDATASIZE.opcode(),
-        Instruction::PUSH1.opcode(), // Len
-        0x02,
-        Instruction::PUSH1.opcode(), // Src offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Dest offset
-        0x02,
-        Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
-    ];
-
-    let bob_rom = [
-        Instruction::PUSH1.opcode(),
-        0xFF,
-        Instruction::PUSH1.opcode(),
-        0x01,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF
-        Instruction::PUSH1.opcode(),
-        0xFF,
-        Instruction::PUSH1.opcode(),
-        0x0A,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
-        Instruction::PUSH1.opcode(),
-        0x0A,
         Instruction::PUSH1.opcode(),
         0x00,
-        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
+        Instruction::KECCAK256.opcode(),
     ];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
     engine.build_contract("0x1234", alice_rom.as_slice())?;
-    engine.build_contract("0x5678", bob_rom.as_slice())?;
     let run = engine.run_contract("0x1234")?;
     info!("{}", run);
 

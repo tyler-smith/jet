@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use inkwell::{
+    AddressSpace,
     context::Context,
     module::Module,
     values::{FunctionValue, GlobalValue},
-    AddressSpace,
 };
 
 use crate::{
@@ -171,6 +171,8 @@ pub(crate) struct RuntimeValues<'ctx> {
     contract_call_new_ctx: FunctionValue<'ctx>,
     contract_call: FunctionValue<'ctx>,
     contract_call_return_data_copy: FunctionValue<'ctx>,
+
+    keccak256: FunctionValue<'ctx>,
 }
 
 impl<'ctx> RuntimeValues<'ctx> {
@@ -192,6 +194,8 @@ impl<'ctx> RuntimeValues<'ctx> {
         let contract_call_return_data_copy =
             module.get_function(runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
 
+        let keccak256 = module.get_function(runtime::FN_NAME_KECCAK256)?;
+
         Some(Self {
             jit_engine,
 
@@ -207,6 +211,8 @@ impl<'ctx> RuntimeValues<'ctx> {
             contract_exec_fn_lookup: contract_call_lookup,
             contract_call,
             contract_call_return_data_copy,
+
+            keccak256,
         })
     }
 
@@ -252,6 +258,10 @@ impl<'ctx> RuntimeValues<'ctx> {
 
     pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {
         self.contract_call_return_data_copy
+    }
+
+    pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
+        self.keccak256
     }
 }
 
