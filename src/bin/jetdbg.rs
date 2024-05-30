@@ -60,9 +60,14 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     );
 
     let alice_rom = [
+        Instruction::PC.opcode(),
+        Instruction::PC.opcode(),
+        Instruction::PC.opcode(),
         Instruction::PUSH1.opcode(),
-        0x00,
-        Instruction::KECCAK256.opcode(),
+        0x06,
+        Instruction::JUMP.opcode(),
+        Instruction::JUMPDEST.opcode(),
+        Instruction::PC.opcode(),
     ];
 
     let context = Context::create();

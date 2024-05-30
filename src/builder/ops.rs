@@ -743,6 +743,16 @@ pub(crate) fn jumpi<'ctx>(
     Ok(())
 }
 
+pub(crate) fn pc<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+    pc: usize,
+) -> Result<(), Error> {
+    let pc = bctx.env.types().word.const_int(pc as u64, false);
+    __stack_push_word(bctx, vstack, pc)?;
+    Ok(())
+}
+
 pub(crate) fn call<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
     vstack: &mut Vec<IntValue<'ctx>>,

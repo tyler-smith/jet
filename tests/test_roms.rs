@@ -166,4 +166,23 @@ rom_tests! {
             ..Default::default()
         },
     },
+
+    program_counter: Test {
+        roms: vec![vec![
+            Instruction::PC.opcode(),
+            Instruction::PC.opcode(),
+            Instruction::PC.opcode(),
+            Instruction::PUSH1.opcode(),
+            0x06,
+            Instruction::JUMP.opcode(),
+            Instruction::JUMPDEST.opcode(),
+            Instruction::PC.opcode(),
+        ]],
+        expected: TestContractRun {
+            stack_ptr: 4,
+            jump_ptr: 6,
+            stack: vec![stack_word(&[]), stack_word(&[0x01]), stack_word(&[0x02]), stack_word(&[0x07])],
+            ..Default::default()
+        },
+    },
 }

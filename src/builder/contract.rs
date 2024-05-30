@@ -359,7 +359,7 @@ fn build_code_block<'ctx, 'b>(
                 trace!("loop: Data: {:?}", data);
                 ops::push(bctx, vstack, data)
             }
-            IteratorItem::Instr(_, instr) => {
+            IteratorItem::Instr(pc, instr) => {
                 trace!("loop: Instruction: {:?}", instr);
                 match instr {
                     Instruction::STOP => ops::stop(bctx, vstack),
@@ -427,6 +427,8 @@ fn build_code_block<'ctx, 'b>(
                             ))
                         }
                     },
+
+                    Instruction::PC => ops::pc(bctx, vstack, code_block.offset + pc),
 
                     Instruction::CALL => ops::call(bctx, vstack),
 
@@ -520,7 +522,6 @@ fn build_code_block<'ctx, 'b>(
                         Err(Error::UnimplementedInstruction(Instruction::SSTORE))
                     }
 
-                    Instruction::PC => Err(Error::UnimplementedInstruction(Instruction::PC)),
                     Instruction::MSIZE => Err(Error::UnimplementedInstruction(Instruction::MSIZE)),
                     Instruction::GAS => Err(Error::UnimplementedInstruction(Instruction::GAS)),
 
