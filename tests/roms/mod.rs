@@ -12,7 +12,7 @@ use jet::{
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub(crate) enum Error {
-    Build(#[from] builder::errors::Error),
+    Build(#[from] builder::Error),
     Engine(#[from] engine::Error),
 }
 
