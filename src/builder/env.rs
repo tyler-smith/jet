@@ -156,8 +156,10 @@ impl<'ctx> Types<'ctx> {
     }
 }
 
-pub(crate) struct RuntimeValues<'ctx> {
+pub(crate) struct Symbols<'ctx> {
     jit_engine: GlobalValue<'ctx>,
+
+    new_exec_ctx: FunctionValue<'ctx>,
 
     stack_push_bytes: FunctionValue<'ctx>,
     stack_push_word: FunctionValue<'ctx>,
@@ -167,17 +169,18 @@ pub(crate) struct RuntimeValues<'ctx> {
     memory_store_byte: FunctionValue<'ctx>,
     memory_load_word: FunctionValue<'ctx>,
 
-    contract_exec_fn_lookup: FunctionValue<'ctx>,
-    contract_call_new_ctx: FunctionValue<'ctx>,
+    contract_fn_lookup: FunctionValue<'ctx>,
     contract_call: FunctionValue<'ctx>,
     contract_call_return_data_copy: FunctionValue<'ctx>,
 
     keccak256: FunctionValue<'ctx>,
 }
 
-impl<'ctx> RuntimeValues<'ctx> {
+impl<'ctx> Symbols<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
         let jit_engine = module.get_global(runtime::GLOBAL_NAME_JIT_ENGINE)?;
+
+        let new_exec_ctx = module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
 
         let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
         let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
@@ -187,9 +190,7 @@ impl<'ctx> RuntimeValues<'ctx> {
         let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
         let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD)?;
 
-        let contract_call_new_ctx =
-            module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
-        let contract_call_lookup = module.get_function(runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
+        let contract_fn_lookup = module.get_function(runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
         let contract_call = module.get_function(runtime::FN_NAME_CONTRACT_CALL)?;
         let contract_call_return_data_copy =
             module.get_function(runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
@@ -199,6 +200,8 @@ impl<'ctx> RuntimeValues<'ctx> {
         Some(Self {
             jit_engine,
 
+            new_exec_ctx,
+
             stack_push_bytes,
             stack_push_word,
             stack_pop_word,
@@ -207,8 +210,7 @@ impl<'ctx> RuntimeValues<'ctx> {
             memory_store_byte,
             memory_load_word,
 
-            contract_call_new_ctx,
-            contract_exec_fn_lookup: contract_call_lookup,
+            contract_fn_lookup,
             contract_call,
             contract_call_return_data_copy,
 
@@ -218,6 +220,10 @@ impl<'ctx> RuntimeValues<'ctx> {
 
     pub(crate) fn jit_engine(&self) -> GlobalValue<'ctx> {
         self.jit_engine
+    }
+
+    pub(crate) fn new_exec_ctx(&self) -> FunctionValue<'ctx> {
+        self.new_exec_ctx
     }
 
     pub(crate) fn stack_push_bytes(&self) -> FunctionValue<'ctx> {
@@ -248,12 +254,8 @@ impl<'ctx> RuntimeValues<'ctx> {
         self.contract_call
     }
 
-    pub(crate) fn new_exec_ctx(&self) -> FunctionValue<'ctx> {
-        self.contract_call_new_ctx
-    }
-
-    pub(crate) fn contract_exec_fn_lookup(&self) -> FunctionValue<'ctx> {
-        self.contract_exec_fn_lookup
+    pub(crate) fn contract_fn_lookup(&self) -> FunctionValue<'ctx> {
+        self.contract_fn_lookup
     }
 
     pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {
@@ -272,13 +274,13 @@ pub struct Env<'ctx> {
     module: Module<'ctx>,
 
     types: Types<'ctx>,
-    runtime_vals: RuntimeValues<'ctx>,
+    symbols: Symbols<'ctx>,
 }
 
 impl<'ctx> Env<'ctx> {
     pub fn new(context: &'ctx Context, module: Module<'ctx>, opts: Options) -> Self {
         let types = Types::new(context);
-        let runtime_fns = RuntimeValues::new(&module);
+        let runtime_fns = Symbols::new(&module);
 
         if runtime_fns.is_none() {
             panic!("Failed to load all runtime functions");
@@ -291,7 +293,7 @@ impl<'ctx> Env<'ctx> {
             module,
 
             types,
-            runtime_vals: runtime_fns.unwrap(),
+            symbols: runtime_fns.unwrap(),
         }
     }
 
@@ -311,7 +313,7 @@ impl<'ctx> Env<'ctx> {
         &self.types
     }
 
-    pub(crate) fn runtime_vals(&self) -> &RuntimeValues<'ctx> {
-        &self.runtime_vals
+    pub(crate) fn symbols(&self) -> &Symbols<'ctx> {
+        &self.symbols
     }
 }

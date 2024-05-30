@@ -84,23 +84,26 @@ impl<'ctx> Engine<'ctx> {
     }
 
     fn link_in_runtime(&self, ee: &ExecutionEngine) {
-        let vals = self.build_manager.env().runtime_vals();
+        let symbols = self.build_manager.env().symbols();
 
         // Link in the JIT engine
         let ee_ptr = ee as *const ExecutionEngine as usize;
-        ee.add_global_mapping(&vals.jit_engine(), ee_ptr);
+        ee.add_global_mapping(&symbols.jit_engine(), ee_ptr);
 
         // Link in runtime functions
         ee.add_global_mapping(
-            &vals.contract_exec_fn_lookup(),
-            functions::jet_contract_exec_fn_lookup as usize,
+            &symbols.contract_fn_lookup(),
+            functions::jet_contract_fn_lookup as usize,
         );
-        ee.add_global_mapping(&vals.new_exec_ctx(), functions::jet_new_exec_ctx as usize);
         ee.add_global_mapping(
-            &vals.contract_call_return_data_copy(),
+            &symbols.new_exec_ctx(),
+            functions::jet_new_exec_ctx as usize,
+        );
+        ee.add_global_mapping(
+            &symbols.contract_call_return_data_copy(),
             functions::jet_contract_call_return_data_copy as usize,
         );
-        ee.add_global_mapping(&vals.keccak256(), functions::jet_ops_keccak256 as usize);
+        ee.add_global_mapping(&symbols.keccak256(), functions::jet_ops_keccak256 as usize);
     }
 }
 

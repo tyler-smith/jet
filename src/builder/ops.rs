@@ -32,7 +32,7 @@ pub(crate) fn __call_stack_push_word<'ctx>(
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
     bctx.builder.build_call(
-        bctx.env.runtime_vals().stack_push_word(),
+        bctx.env.symbols().stack_push_word(),
         &[bctx.registers.exec_ctx.into(), value],
         "stack_push_word",
     )
@@ -44,7 +44,7 @@ fn __call_stack_push_bytes<'ctx>(
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     let value = value.into();
     bctx.builder.build_call(
-        bctx.env.runtime_vals().stack_push_bytes(),
+        bctx.env.symbols().stack_push_bytes(),
         &[bctx.registers.exec_ctx.into(), value],
         "stack_push_bytes",
     )
@@ -52,7 +52,7 @@ fn __call_stack_push_bytes<'ctx>(
 
 fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, Error> {
     let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.runtime_vals().stack_pop_word(),
+        bctx.env.symbols().stack_pop_word(),
         &[bctx.registers.exec_ctx.into()],
         "stack_pop_word_a",
     )?;
@@ -563,7 +563,7 @@ pub(crate) fn keccak256<'ctx>(
 
     // TODO: Check return code
     ctx.builder.build_call(
-        ctx.env.runtime_vals().keccak256(),
+        ctx.env.symbols().keccak256(),
         &[data_ptr.into()],
         "keccak256",
     )?;
@@ -643,7 +643,7 @@ pub(crate) fn returndatacopy<'ctx>(
 
     // Call the runtime function to copy the return data
     bctx.builder.build_call(
-        bctx.env.runtime_vals().contract_call_return_data_copy(),
+        bctx.env.symbols().contract_call_return_data_copy(),
         &[
             bctx.registers.exec_ctx.into(),
             sub_call_ctx_ptr.into(),
@@ -671,7 +671,7 @@ pub(crate) fn mload<'ctx>(
 ) -> Result<(), Error> {
     let loc = __stack_pop_1(bctx, vstack)?;
     let ret = bctx.builder.build_call(
-        bctx.env.runtime_vals().mload(),
+        bctx.env.symbols().mload(),
         &[bctx.registers.exec_ctx.into(), loc.into()],
         "mload",
     )?;
@@ -688,7 +688,7 @@ pub(crate) fn mstore<'ctx>(
 ) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
-        bctx.env.runtime_vals().mstore(),
+        bctx.env.symbols().mstore(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore",
     )?;
@@ -701,7 +701,7 @@ pub(crate) fn mstore8<'ctx>(
 ) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx, vstack)?;
     bctx.builder.build_call(
-        bctx.env.runtime_vals().mstore8(),
+        bctx.env.symbols().mstore8(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore8",
     )?;
@@ -751,9 +751,9 @@ pub(crate) fn call<'ctx>(
     // let to = __stack_pop_1(bctx, vstack)?;
 
     // Create sub call context
-    let call_ctx =
-        bctx.builder
-            .build_call(bctx.env.runtime_vals().new_exec_ctx(), &[], "call_ctx")?;
+    let call_ctx = bctx
+        .builder
+        .build_call(bctx.env.symbols().new_exec_ctx(), &[], "call_ctx")?;
     let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(call_ctx.as_value_ref()) };
 
     // Truncate parameters to correct bit sizes
@@ -768,7 +768,7 @@ pub(crate) fn call<'ctx>(
         .build_int_truncate(out_len, bctx.env.types().i32, "call_out_len")?;
 
     // Call the contract with the call context
-    let contract_call_fn = bctx.env.runtime_vals().contract_call();
+    let contract_call_fn = bctx.env.symbols().contract_call();
     let make_contract_call = bctx.builder.build_call(
         contract_call_fn,
         &[

@@ -8,7 +8,7 @@ pub fn mangle_contract_fn(address: &str) -> String {
 }
 
 #[no_mangle]
-pub extern "C" fn jet_contract_exec_fn_lookup(
+pub extern "C" fn jet_contract_fn_lookup(
     jit_engine: *const ExecutionEngine,
     out: *mut usize,
     addr: usize,
