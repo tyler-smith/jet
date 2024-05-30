@@ -23,13 +23,13 @@ macro_rules! rom_tests {
         $(
             paste::item! {
                 #[test]
-                fn [<test_rom_with_vstack $name>]() -> Result<(), Error> {
+                fn [<test_rom_with_vstack_ $name>]() -> Result<(), Error> {
                     let t: Test = $test;
                     _test_rom_body(t, true)
                 }
 
                 #[test]
-                fn [<test_rom_with_real_stack $name>]() -> Result<(), Error> {
+                fn [<test_rom_with_real_stack_ $name>]() -> Result<(), Error> {
                     let t: Test = $test;
                     _test_rom_body(t, false)
                 }
