@@ -71,7 +71,6 @@ impl<'ctx, 'b> BuildCtx<'ctx, 'b> {
         env: &'b Env<'ctx>,
         builder: &'b inkwell::builder::Builder<'ctx>,
         func: FunctionValue<'ctx>,
-        // registers: &'ctx CallRegisters<'ctx>,
     ) -> Self {
         Self {
             env,
@@ -273,12 +272,16 @@ fn build_contract_body<'ctx, 'b>(
 ) -> Result<(), Error> {
     let t = bctx.env.types();
 
-    // let mut has_jump_instructions = false;
     let mut jump_cases = Vec::new();
-    let jump_block = bctx
-        .env
-        .context()
-        .append_basic_block(bctx.func, "jump_block");
+
+    let jump_block = match code_blocks.has_jumpdest() {
+        true => Some(
+            bctx.env
+                .context()
+                .append_basic_block(bctx.func, "jump_block"),
+        ),
+        false => None,
+    };
 
     let mut vstack: Vec<IntValue<'ctx>> = Vec::with_capacity(VSTACK_INIT_SIZE);
 
@@ -291,7 +294,7 @@ fn build_contract_body<'ctx, 'b>(
             // we subtract 1, and a given offset of 0 is invalid.
             let mut offset = code_block.offset as u64;
             if offset == 0 {
-                panic!("Jump destination at offset 0");
+                return Err(Error::invariant_violation("Jump destination at offset 0"));
             }
             offset -= 1;
             jump_cases.push((t.i32.const_int(offset, false), code_block.basic_block));
@@ -325,11 +328,11 @@ fn build_contract_body<'ctx, 'b>(
     }
 
     // Add jump table to the end of the function
-    if code_blocks.has_jumpdest() {
-        build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
-    } else {
-        bctx.builder.position_at_end(jump_block);
-        ops::__invalid_jump_return(bctx, &mut vstack)?;
+    match jump_block {
+        Some(jump_block) => {
+            build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
+        }
+        None => {}
     }
 
     Ok(())
@@ -339,7 +342,7 @@ fn build_code_block<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     code_block: &CodeBlock,
     vstack: &mut Vec<IntValue<'ctx>>,
-    jump_block: BasicBlock,
+    jump_block: Option<BasicBlock>,
     following_block: Option<&&CodeBlock>,
 ) -> Result<(), Error> {
     trace!("loop: Building code");
@@ -354,7 +357,7 @@ fn build_code_block<'ctx, 'b>(
         match item {
             IteratorItem::PushData(_, data) => {
                 trace!("loop: Data: {:?}", data);
-                ops::push(bctx, vstack, data)?;
+                ops::push(bctx, vstack, data)
             }
             IteratorItem::Instr(_, instr) => {
                 trace!("loop: Instruction: {:?}", instr);
@@ -394,10 +397,6 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::KECCAK256 => ops::keccak256(bctx, vstack),
 
                     // Call data
-                    // Instruction::CALLVALUE => ops::callvalue(&bctx),
-                    // Instruction::CALLDATALOAD => ops::calldataload(&bctx),
-                    // Instruction::CALLDATASIZE => ops::calldatasize(&bctx),
-                    // Instruction::CALLDATACOPY => ops::calldatacopy(&bctx),
                     Instruction::RETURNDATASIZE => ops::returndatasize(bctx, vstack),
                     Instruction::RETURNDATACOPY => ops::returndatacopy(bctx, vstack),
 
@@ -408,14 +407,26 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::MSTORE => ops::mstore(bctx, vstack),
                     Instruction::MSTORE8 => ops::mstore8(bctx, vstack),
 
-                    Instruction::JUMP => ops::jump(bctx, vstack, jump_block),
-                    Instruction::JUMPI => {
-                        if let Some(next_block) = following_block {
-                            ops::jumpi(bctx, vstack, jump_block, next_block.basic_block)
-                        } else {
-                            panic!("JUMPI without following block")
+                    Instruction::JUMP => match jump_block {
+                        Some(jump_block) => ops::jump(bctx, vstack, jump_block),
+                        _ => return Err(Error::invariant_violation("JUMP without jump block")),
+                    },
+                    Instruction::JUMPI => match (jump_block, following_block) {
+                        (Some(jump_block), Some(following_block)) => {
+                            ops::jumpi(bctx, vstack, jump_block, following_block.basic_block)
                         }
-                    }
+                        (Some(_), None) => {
+                            return Err(Error::invariant_violation("JUMPI without following block"))
+                        }
+                        (None, Some(_)) => {
+                            return Err(Error::invariant_violation("JUMPI without jump block"))
+                        }
+                        (None, None) => {
+                            return Err(Error::invariant_violation(
+                                "JUMPI without jump or following blocks",
+                            ))
+                        }
+                    },
 
                     Instruction::CALL => ops::call(bctx, vstack),
 
@@ -612,13 +623,13 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::SWAP14 => Err(Error::UnexpectedInstruction(Instruction::SWAP14)),
                     Instruction::SWAP15 => Err(Error::UnexpectedInstruction(Instruction::SWAP15)),
                     Instruction::SWAP16 => Err(Error::UnexpectedInstruction(Instruction::SWAP16)),
-                }?;
+                }
             }
             IteratorItem::Invalid(_) => {
                 trace!("loop: Invalid");
                 return Err(Error::UnknownInstruction(0));
             }
-        }
+        }?
     }
     Ok(())
 }

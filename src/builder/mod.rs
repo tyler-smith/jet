@@ -18,12 +18,21 @@ pub enum Error {
     #[error("verify error")]
     Verify,
 
-    #[error("instruction {} is unimplemented", .0)]
+    #[error("instruction is unimplemented: {}", .0)]
     UnimplementedInstruction(Instruction),
 
-    #[error("instruction {} is unexpected", .0)]
+    #[error("instruction is unexpected: {}", .0)]
     UnexpectedInstruction(Instruction),
 
-    #[error("instruction {} is unknown", .0)]
+    #[error("instruction is unknown: {}", .0)]
     UnknownInstruction(u8),
+
+    #[error("invariant violation: {}", .0)]
+    InvariantViolation(String),
+}
+
+impl Error {
+    pub fn invariant_violation<T: Into<String>>(msg: T) -> Self {
+        Error::InvariantViolation(msg.into())
+    }
 }
