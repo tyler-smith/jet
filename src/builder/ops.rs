@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     builder::BuilderError,
-    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue},
+    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue, StructValue},
 };
 use log::trace;
 
@@ -51,13 +51,30 @@ fn __call_stack_push_bytes<'ctx>(
 }
 
 fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, Error> {
-    let stack_pop_word_result_a = bctx.builder.build_call(
-        bctx.env.symbols().stack_pop_word(),
-        &[bctx.registers.exec_ctx.into()],
-        "stack_pop_word_a",
-    )?;
-    let a = unsafe { IntValue::new(stack_pop_word_result_a.as_value_ref()) };
-    Ok(a)
+    let pop_ret = {
+        let ret = bctx.builder.build_call(
+            bctx.env.symbols().stack_pop_word(),
+            &[bctx.registers.exec_ctx.into()],
+            "pop_word",
+        )?;
+        let ret = ret.as_value_ref();
+        unsafe { StructValue::new(ret) }
+    };
+
+    // TODO: Handle errors
+    // let error = {
+    //     let e = pop_ret.get_field_at_index(0).unwrap();
+    //     let e = e.as_value_ref();
+    //     unsafe { IntValue::new(e) }
+    // };
+
+    let value = {
+        let v = pop_ret.get_field_at_index(1).unwrap();
+        let v = v.as_value_ref();
+        unsafe { IntValue::new(v) }
+    };
+
+    Ok(value)
 }
 
 // Helpers

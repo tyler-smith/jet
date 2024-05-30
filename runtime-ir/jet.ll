@@ -38,7 +38,6 @@ declare i8 @jet.ops.keccak256(ptr)
 %jet.types.mem_buf = type [1024 x i8]
 
 %jet.types.mem = type <{
-  ;%jet.types.mem_buf *, ; data
   %jet.types.mem_buf, ; data
   i32, ; length
   i32 ; capacity
@@ -59,12 +58,13 @@ declare i8 @jet.ops.keccak256(ptr)
   i32, ; jump_ptr
   i32, ; return offset
   i32, ; return length
-  ptr,; sub call ctx
+  ptr, ; sub call ctx
+
   [1024 x i256], ; stack
 
-  [1024 x i8], ; memory
-  i32, ; mem length
-  i32 ; mem capacity
+  [1024 x i8], ; mem buffer
+  i32,         ; mem length
+  i32          ; mem capacity
 }>
 
 %jet.types.contract_fn = type i8(%jet.types.exec_ctx*)
@@ -84,16 +84,21 @@ entry:
   %stack.ptr = load i32, ptr %stack.ptr.addr
   %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr
 
-  ; TODO: Check if we'll break the stack
-
-  ; Store word
-  store i256 %1, ptr %stack.top.addr
-
   ; Increment stack pointer
   %stack.ptr.next = add i32 %stack.ptr, 1
-  store i32 %stack.ptr.next, ptr %stack.ptr.addr
 
+  ; Check for stack overflow
+  %overflow = icmp ugt i32 %stack.ptr.next, 1024
+  br i1 %overflow, label %stack_overflow, label %store
+
+ store:
+  ; Store pointer and word and return success
+  store i32 %stack.ptr.next, ptr %stack.ptr.addr
+  store i256 %1, ptr %stack.top.addr
   ret i1 true
+
+stack_overflow:
+  ret i1 false
 }
 
 ; Pushes an array of 32 bytes onto the stack as a word, and incs the stack ptr.
@@ -108,21 +113,34 @@ entry:
   ret i1 %result
 }
 
-define i256 @jet.stack.pop (%jet.types.exec_ctx* %0) #0 {
+define { i1, i256 } @jet.stack.pop (%jet.types.exec_ctx* %0) #0 {
 entry:
   ; Load stack pointer
   %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
   %stack.ptr = load i32, ptr %stack.ptr.addr, align 4
-  %stack.ptr.sub_1 = sub i32 %stack.ptr, 1
-  %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr.sub_1
+  %stack.ptr.next = sub i32 %stack.ptr, 1
 
-  ; Load word
+  ; Check for stack underflow
+  %underflow = icmp eq i32 %stack.ptr.next, 0
+  br i1 %underflow, label %stack_underflow, label %load
+
+load: 
+  ; Load word and return success
+  %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr.next
   %stack_word = load i256, ptr %stack.top.addr, align 8
+  store i32 %stack.ptr.next, ptr %stack.ptr.addr, align 4
 
-  ; Decrement stack pointer
-  store i32 %stack.ptr.sub_1, ptr %stack.ptr.addr, align 4
+  %ret.ptr = alloca { i1, i256 }
+  %ret.error.ptr = getelementptr inbounds { i1, i256 }, ptr %ret.ptr, i32 0, i32 0
+  %ret.word.ptr = getelementptr inbounds { i1, i256 }, ptr %ret.ptr, i32 0, i32 1
+  store i1 true, ptr %ret.error.ptr
+  store i256 %stack_word, ptr %ret.word.ptr 
+  %ret = load { i1, i256 }, ptr %ret.ptr
 
-  ret i256 %stack_word
+  ret { i1, i256 } %ret
+
+stack_underflow:
+  ret { i1, i256 } { i1 false, i256 0 }
 }
 
 define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
