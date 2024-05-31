@@ -14,9 +14,13 @@ pub extern "C" fn jet_contract_fn_lookup(
     addr: usize,
 ) -> i8 {
     // Convert the address to a function name
-    let addr_slice = unsafe { std::slice::from_raw_parts(addr as *const u8, ADDRESS_SIZE_BYTES) };
+    let mut addr_slice =
+        unsafe { std::slice::from_raw_parts(addr as *const u8, ADDRESS_SIZE_BYTES) };
+
+    let reversed_addr = addr_slice.iter().rev().cloned().collect::<Vec<u8>>();
+
     let mut addr_str = "0x".to_owned();
-    addr_str.push_str(&hex::encode(addr_slice));
+    addr_str.push_str(&hex::encode(reversed_addr.as_slice()));
     let fn_name = mangle_contract_fn(addr_str.as_str());
 
     // Look up the function pointer

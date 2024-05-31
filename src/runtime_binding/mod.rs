@@ -1,5 +1,7 @@
 use std::fmt;
 
+use colored::Colorize;
+
 use crate::runtime::exec;
 
 impl fmt::Display for exec::Context {
@@ -30,23 +32,48 @@ impl fmt::Display for exec::Context {
             )?;
         }
 
-        let mut stack_items = self.stack_ptr() + 3;
-        if stack_items > 5 {
-            stack_items = 5;
-        }
-
         writeln!(f, "Stack:")?;
-        for i in 0..stack_items {
-            let offset = (32 * i) as usize;
+        let stack = self.stack();
+        let mut stack_size = self.stack_ptr() as usize;
+
+        // Print out each 32 byte word, starting from the top of the stack and working down
+        for i in 0..stack_size {
+            let word_idx = stack_size - i - 1;
+            let offset = (32 * word_idx) as usize;
             let end = offset + 32;
+
+            let byte_formatter = |acc: (String, bool), x: &u8| {
+                let has_been_significant = acc.1;
+                let is_significant = has_been_significant || *x != 0;
+
+                let mut byte_str = format!("{:02X}", x);
+
+                if is_significant {
+                    byte_str = if !has_been_significant && x < &16 {
+                        let chars = byte_str.chars();
+                        format!(
+                            "{}{}",
+                            chars.clone().nth(0).unwrap().to_string(),
+                            chars.clone().nth(1).unwrap().to_string().blue()
+                        )
+                    } else {
+                        byte_str.blue().to_string()
+                    };
+                }
+
+                (acc.0.clone() + &byte_str, is_significant)
+            };
+
             writeln!(
                 f,
                 "  {}: {}",
-                i,
-                self.stack()[offset..end]
+                word_idx + 1,
+                stack[offset..end]
                     .iter()
                     .take(32)
-                    .fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
+                    .rev()
+                    .fold((String::new(), false), byte_formatter)
+                    .0
             )?;
         }
 

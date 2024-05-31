@@ -239,12 +239,27 @@ impl<'a> std::iter::Iterator for Iterator<'a> {
 
         // We have a PUSH instruction, so emit the next N bytes
         let push_len = instr as usize - Instruction::PUSH0 as usize;
-        let data = {
-            let mut data = [0; 32];
-            data[..push_len].copy_from_slice(&self.rom[pc + 1..pc + 1 + push_len]);
+        let push_start = pc + 1;
+        let push_end = push_start + push_len;
+
+        // Copy the push data into a 32-byte array, converting from big endian to little endian
+        let push_data = {
+            let data = [0; 32];
+            match push_len {
+                0 => (),
+                _ => {
+                    let reversed = &self.rom[push_start..push_end]
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .collect::<Vec<u8>>();
+                    data[..push_len].copy_from_slice(reversed.as_slice())
+                }
+            };
             data
         };
+
         self.pc += push_len + 1;
-        Some(IteratorItem::PushData(pc, data))
+        Some(IteratorItem::PushData(pc, push_data))
     }
 }
