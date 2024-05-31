@@ -243,6 +243,7 @@ fn find_code_blocks<'ctx, 'b>(
             IteratorItem::Invalid(pc) => {
                 trace!("find_code_blocks: Found invalid instruction at PC {}", pc);
                 // TODO: return error
+                panic!("Invalid instruction at PC {}", pc)
             }
         }
     }
@@ -388,7 +389,7 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::OR => ops::or(bctx, vstack),
                     Instruction::XOR => ops::xor(bctx, vstack),
                     Instruction::NOT => ops::not(bctx, vstack),
-                    // Instruction::BYTE => ops::byte(&bctx),
+                    Instruction::BYTE => ops::byte(bctx, vstack),
                     Instruction::SHL => ops::shl(bctx, vstack),
                     Instruction::SHR => ops::shr(bctx, vstack),
                     Instruction::SAR => ops::sar(bctx, vstack),
@@ -438,8 +439,6 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::SELFDESTRUCT => ops::selfdestruct(bctx, vstack),
 
                     // Not yet implemented
-                    Instruction::BYTE => Err(Error::UnimplementedInstruction(Instruction::BYTE)),
-
                     Instruction::ADDRESS => {
                         Err(Error::UnimplementedInstruction(Instruction::ADDRESS))
                     }

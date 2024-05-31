@@ -37,6 +37,7 @@ impl Options {
     }
 
     pub fn vstack(&self) -> bool {
+        return false;
         self.vstack
     }
 
@@ -77,6 +78,7 @@ pub struct Types<'ctx> {
 
     // Architecture
     pub word: inkwell::types::IntType<'ctx>,
+    pub word_array: inkwell::types::ArrayType<'ctx>,
     pub stack: inkwell::types::ArrayType<'ctx>,
 
     pub mem_len: inkwell::types::IntType<'ctx>,
@@ -104,6 +106,7 @@ impl<'ctx> Types<'ctx> {
 
         // Architecture
         let word = context.custom_width_int_type(WORD_SIZE_BITS);
+        let word_array = i8.array_type(32);
         let stack = word.array_type(STACK_SIZE_WORDS);
 
         let mem_len = context.i32_type();
@@ -140,7 +143,9 @@ impl<'ctx> Types<'ctx> {
             ptr,
 
             word,
+            word_array,
             stack,
+
             mem_len,
             mem_cap,
             mem,

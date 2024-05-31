@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     builder::BuilderError,
-    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue},
+    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue, PointerValue},
 };
 use log::trace;
 
@@ -265,7 +265,20 @@ pub(crate) fn add<'ctx>(
     vstack: &mut Vec<IntValue<'ctx>>,
 ) -> Result<(), Error> {
     let (a, b) = __stack_pop_2(bctx, vstack)?;
+
+    // let a_32bit = bctx
+    //     .builder
+    //     .build_int_truncate(a, bctx.env.types().i32, "add_a")?;
+    // let b_32bit = bctx
+    //     .builder
+    //     .build_int_truncate(b, bctx.env.types().i32, "add_b")?;
+
     let result = bctx.builder.build_int_add(a, b, "add_result")?;
+
+    let result = bctx
+        .builder
+        .build_int_z_extend(result, bctx.env.types().word, "add_result")?;
+
     __stack_push_word(bctx, vstack, result)?;
     Ok(())
 }
@@ -512,11 +525,47 @@ pub(crate) fn not<'ctx>(
     Ok(())
 }
 
-// fn byte<'ctx>(bctx: &BuildCtx<'ctx>) -> Result<(), BuildError> {
-//     let (a, b) = stack_pop_2(bctx)?;
-//     let result = bctx.builder.build_extract_element(a, b, "byte_result")?;
-//     stack_push_word(bctx, result)?;
-// }
+pub(crate) fn byte<'ctx>(
+    bctx: &BuildCtx<'ctx, '_>,
+    vstack: &mut Vec<IntValue<'ctx>>,
+) -> Result<(), Error> {
+    let (idx, word) = __stack_pop_2(bctx, vstack)?;
+
+    // Truncate idx to 32 bits and then invert (31 - idx)
+    let idx_i32 = bctx
+        .builder
+        .build_int_truncate(idx, bctx.env.types().i32, "byte_idx")?;
+    let const_31 = bctx.env.types().i32.const_int(31, false);
+    let idx_i32 = bctx.builder.build_int_sub(const_31, idx_i32, "byte_idx")?;
+
+    // Allocate a pointer to the word
+    let word_ptr = bctx
+        .builder
+        .build_alloca(bctx.env.types().word, "byte_word_ptr")?;
+    bctx.builder.build_store(word_ptr, word)?;
+
+    // GEP into the word array and load the byte
+    let byte_ptr = unsafe {
+        bctx.builder.build_in_bounds_gep(
+            bctx.env.types().word_array,
+            word_ptr,
+            &[idx_i32],
+            "byte_ptr",
+        )
+    }?;
+    let byte = bctx
+        .builder
+        .build_load(bctx.env.types().i8, byte_ptr, "byte")?;
+    let byte_int = unsafe { IntValue::new(byte.as_value_ref()) };
+
+    // Extend the byte to a word and push to the stack
+    let byte_word =
+        bctx.builder
+            .build_int_z_extend(byte_int, bctx.env.types().word, "byte_word")?;
+    __stack_push_word(bctx, vstack, byte_word)?;
+
+    Ok(())
+}
 
 pub(crate) fn shl<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
