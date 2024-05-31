@@ -37,7 +37,6 @@ impl Options {
     }
 
     pub fn vstack(&self) -> bool {
-        return false;
         self.vstack
     }
 

@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     builder::BuilderError,
-    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue, PointerValue},
+    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue},
 };
 use log::trace;
 

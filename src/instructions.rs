@@ -244,7 +244,7 @@ impl<'a> std::iter::Iterator for Iterator<'a> {
 
         // Copy the push data into a 32-byte array, converting from big endian to little endian
         let push_data = {
-            let data = [0; 32];
+            let mut data = [0; 32];
             match push_len {
                 0 => (),
                 _ => {

@@ -34,7 +34,7 @@ impl fmt::Display for exec::Context {
 
         writeln!(f, "Stack:")?;
         let stack = self.stack();
-        let mut stack_size = self.stack_ptr() as usize;
+        let stack_size = self.stack_ptr() as usize;
 
         // Print out each 32 byte word, starting from the top of the stack and working down
         for i in 0..stack_size {
