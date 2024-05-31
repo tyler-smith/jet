@@ -31,7 +31,7 @@ run: ## Run the jetdbg
 
 .PHONY: test
 test: ## Run package tests
-	cargo test
+	cargo nextest run
 
 .PHONY: fmt
 fmt: format ## Format Rust code
