@@ -68,96 +68,28 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     //     Instruction::BYTE.opcode(),
     // ];
 
-    // let alice_rom = [Instruction::PUSH2.opcode(), 0xFF, 0x00];
     let alice_rom = [
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH2.opcode(),
-        // 0x01,
-        // 0x00,
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH2.opcode(),
-        // 0x01,
-        // 0x00,
-        // Instruction::ADD.opcode(),
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH2.opcode(),
-        // 0x00,
-        // 0x01,
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH2.opcode(),
-        // 0x00,
-        // 0x01,
-        // Instruction::ADD.opcode(),
-        // // Byte tests
-        // Instruction::PUSH1.opcode(),
-        // 0xFF,
-        // Instruction::PUSH1.opcode(),
-        // 31,
-        // Instruction::BYTE.opcode(),
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH1.opcode(),
-        // 30,
-        // Instruction::PUSH2.opcode(),
-        // 0xFF,
-        // 0x00,
-        // Instruction::PUSH1.opcode(),
-        // 30,
-        // Instruction::BYTE.opcode(),
-        Instruction::PUSH1.opcode(), // Output len
-        0x0A,
-        Instruction::PUSH0.opcode(), // Output offset
-        Instruction::PUSH0.opcode(), // Input len
-        Instruction::PUSH0.opcode(), // Input offset
-        Instruction::PUSH0.opcode(), // Value
-        Instruction::PUSH2.opcode(), // Address
-        0x00,
-        0x01,
-        Instruction::PUSH1.opcode(), // Gas
-        0x00,
-        Instruction::CALL.opcode(),
-        Instruction::RETURNDATASIZE.opcode(),
-        Instruction::PUSH1.opcode(), // Len
-        0x02,
-        Instruction::PUSH1.opcode(), // Src offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Dest offset
-        0x02,
-        Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
-    ];
-
-    let bob_rom = [
-        Instruction::PUSH1.opcode(),
-        0xFF,
         Instruction::PUSH1.opcode(),
         0x01,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF
         Instruction::PUSH1.opcode(),
-        0xFF,
+        0x02,
         Instruction::PUSH1.opcode(),
-        0x0A,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
+        0x03,
         Instruction::PUSH1.opcode(),
-        0x0A,
+        0x04,
         Instruction::PUSH1.opcode(),
-        0x00,
-        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
+        0x05,
+        Instruction::DUP1.opcode(),
+        Instruction::DUP3.opcode(),
+        Instruction::DUP5.opcode(),
+        Instruction::DUP7.opcode(),
+        Instruction::DUP9.opcode(),
     ];
 
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
     engine.build_contract("0x1234", alice_rom.as_slice())?;
-    engine.build_contract("0x0001", bob_rom.as_slice())?;
     let run = engine.run_contract("0x1234")?;
     info!("{}", run);
 

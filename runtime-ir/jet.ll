@@ -125,6 +125,21 @@ entry:
   ret i256 %stack_word
 }
 
+define i256 @jet.stack.peek (%jet.types.exec_ctx* %0, i8 %peek_idx) #0 {
+entry:
+  ; Load stack pointer and subtract the peek index
+  %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
+  %stack.ptr = load i32, ptr %stack.ptr.addr, align 4
+
+  %peek_idx.i32 = zext i8 %peek_idx to i32
+  %stack.peek.ptr = sub i32 %stack.ptr, %peek_idx.i32
+  %stack.peek.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.peek.ptr 
+
+  ; Load word
+  %stack_word = load i256, ptr %stack.peek.addr
+  ret i256 %stack_word
+}
+
 define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
 entry:
   %loc_i32 = trunc i256 %loc to i32

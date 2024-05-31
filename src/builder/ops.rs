@@ -60,6 +60,18 @@ fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, E
     Ok(a)
 }
 
+fn __call_stack_peek<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<IntValue<'ctx>, Error> {
+    let index_value = bctx.env.types().i8.const_int(index as u64, false);
+
+    let stack_peek_word_result_a = bctx.builder.build_call(
+        bctx.env.symbols().stack_peek_word(),
+        &[bctx.registers.exec_ctx.into(), index_value.into()],
+        "stack_peek_word",
+    )?;
+    let a = unsafe { IntValue::new(stack_peek_word_result_a.as_value_ref()) };
+    Ok(a)
+}
+
 // Helpers
 //
 
@@ -226,6 +238,13 @@ pub(crate) fn push<'ctx>(bctx: &BuildCtx<'ctx, '_>, bytes: [u8; 32]) -> Result<(
 
     __call_stack_push_bytes(bctx, value_array)?;
 
+    Ok(())
+}
+
+pub(crate) fn dup<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<(), Error> {
+    __sync_vstack(bctx)?;
+    let peeked_value = __call_stack_peek(bctx, index)?;
+    __call_stack_push_word(bctx, peeked_value)?;
     Ok(())
 }
 
