@@ -1,3 +1,5 @@
+use std::cell::{Ref, RefCell, RefMut};
+
 use inkwell::{
     basic_block::BasicBlock,
     values::{FunctionValue, IntValue},
@@ -63,6 +65,7 @@ pub(crate) struct BuildCtx<'ctx, 'b> {
     pub(crate) env: &'b Env<'ctx>,
     pub(crate) builder: &'b inkwell::builder::Builder<'ctx>,
     pub(crate) registers: Registers<'ctx>,
+    vstack: RefCell<Vec<IntValue<'ctx>>>,
     func: FunctionValue<'ctx>,
 }
 
@@ -72,12 +75,22 @@ impl<'ctx, 'b> BuildCtx<'ctx, 'b> {
         builder: &'b inkwell::builder::Builder<'ctx>,
         func: FunctionValue<'ctx>,
     ) -> Self {
+        let vstack = RefCell::new(Vec::with_capacity(VSTACK_INIT_SIZE));
         Self {
             env,
             builder,
+            vstack,
             func,
             registers: Registers::new(env, builder, func),
         }
+    }
+
+    pub(crate) fn vstack(&self) -> Ref<'_, Vec<IntValue<'ctx>>> {
+        self.vstack.borrow()
+    }
+
+    pub(crate) fn vstack_mut(&self) -> RefMut<'_, Vec<IntValue<'ctx>>> {
+        self.vstack.borrow_mut()
     }
 }
 
@@ -284,8 +297,6 @@ fn build_contract_body<'ctx, 'b>(
         false => None,
     };
 
-    let mut vstack: Vec<IntValue<'ctx>> = Vec::with_capacity(VSTACK_INIT_SIZE);
-
     // Iterate over the code blocks and interpret the bytecode of each one
     let mut code_blocks_iter = code_blocks.iter().peekable();
     while let Some(code_block) = code_blocks_iter.next() {
@@ -303,7 +314,7 @@ fn build_contract_body<'ctx, 'b>(
 
         let following_block = code_blocks_iter.peek();
 
-        build_code_block(bctx, code_block, &mut vstack, jump_block, following_block)?;
+        build_code_block(bctx, code_block, jump_block, following_block)?;
 
         // If the block terminated due to an instruction, e.g. STOP or RETURN, then it should
         // have taken care of terminating the block and we don't need to do anything else.
@@ -317,14 +328,14 @@ fn build_contract_body<'ctx, 'b>(
             Some(next_block) => {
                 // Sync the vstack with the real stack
                 // Terminator instructions will handle the stack themselves
-                ops::__sync_vstack(bctx, &mut vstack)?;
+                ops::__sync_vstack(bctx)?;
 
                 bctx.builder
                     .build_unconditional_branch(next_block.basic_block)
                     .unwrap();
                 Ok(())
             }
-            None => ops::__build_return(bctx, &mut vstack, ReturnCode::ImplicitReturn),
+            None => ops::__build_return(bctx, ReturnCode::ImplicitReturn),
         }?;
     }
 
@@ -342,7 +353,6 @@ fn build_contract_body<'ctx, 'b>(
 fn build_code_block<'ctx, 'b>(
     bctx: &BuildCtx<'ctx, 'b>,
     code_block: &CodeBlock,
-    vstack: &mut Vec<IntValue<'ctx>>,
     jump_block: Option<BasicBlock>,
     following_block: Option<&&CodeBlock>,
 ) -> Result<(), Error> {
@@ -358,63 +368,63 @@ fn build_code_block<'ctx, 'b>(
         match item {
             IteratorItem::PushData(_, data) => {
                 trace!("loop: Data: {:?}", data);
-                ops::push(bctx, vstack, data)
+                ops::push(bctx, data)
             }
             IteratorItem::Instr(pc, instr) => {
                 trace!("loop: Instruction: {:?}", instr);
                 match instr {
-                    Instruction::STOP => ops::stop(bctx, vstack),
+                    Instruction::STOP => ops::stop(bctx),
 
                     // Arithmetic
-                    Instruction::ADD => ops::add(bctx, vstack),
-                    Instruction::MUL => ops::mul(bctx, vstack),
-                    Instruction::SUB => ops::sub(bctx, vstack),
-                    Instruction::DIV => ops::div(bctx, vstack),
-                    Instruction::SDIV => ops::sdiv(bctx, vstack),
-                    Instruction::MOD => ops::_mod(bctx, vstack),
-                    Instruction::SMOD => ops::smod(bctx, vstack),
-                    Instruction::ADDMOD => ops::addmod(bctx, vstack),
-                    Instruction::MULMOD => ops::mulmod(bctx, vstack),
+                    Instruction::ADD => ops::add(bctx),
+                    Instruction::MUL => ops::mul(bctx),
+                    Instruction::SUB => ops::sub(bctx),
+                    Instruction::DIV => ops::div(bctx),
+                    Instruction::SDIV => ops::sdiv(bctx),
+                    Instruction::MOD => ops::_mod(bctx),
+                    Instruction::SMOD => ops::smod(bctx),
+                    Instruction::ADDMOD => ops::addmod(bctx),
+                    Instruction::MULMOD => ops::mulmod(bctx),
                     Instruction::EXP => ops::exp(bctx),
                     Instruction::SIGNEXTEND => ops::signextend(bctx),
 
                     // Comparisons
-                    Instruction::LT => ops::lt(bctx, vstack),
-                    Instruction::GT => ops::gt(bctx, vstack),
-                    Instruction::SLT => ops::slt(bctx, vstack),
-                    Instruction::SGT => ops::sgt(bctx, vstack),
-                    Instruction::EQ => ops::eq(bctx, vstack),
-                    Instruction::ISZERO => ops::iszero(bctx, vstack),
-                    Instruction::AND => ops::and(bctx, vstack),
-                    Instruction::OR => ops::or(bctx, vstack),
-                    Instruction::XOR => ops::xor(bctx, vstack),
-                    Instruction::NOT => ops::not(bctx, vstack),
-                    Instruction::BYTE => ops::byte(bctx, vstack),
-                    Instruction::SHL => ops::shl(bctx, vstack),
-                    Instruction::SHR => ops::shr(bctx, vstack),
-                    Instruction::SAR => ops::sar(bctx, vstack),
+                    Instruction::LT => ops::lt(bctx),
+                    Instruction::GT => ops::gt(bctx),
+                    Instruction::SLT => ops::slt(bctx),
+                    Instruction::SGT => ops::sgt(bctx),
+                    Instruction::EQ => ops::eq(bctx),
+                    Instruction::ISZERO => ops::iszero(bctx),
+                    Instruction::AND => ops::and(bctx),
+                    Instruction::OR => ops::or(bctx),
+                    Instruction::XOR => ops::xor(bctx),
+                    Instruction::NOT => ops::not(bctx),
+                    Instruction::BYTE => ops::byte(bctx),
+                    Instruction::SHL => ops::shl(bctx),
+                    Instruction::SHR => ops::shr(bctx),
+                    Instruction::SAR => ops::sar(bctx),
 
                     // Cryptographic
-                    Instruction::KECCAK256 => ops::keccak256(bctx, vstack),
+                    Instruction::KECCAK256 => ops::keccak256(bctx),
 
                     // Call data
-                    Instruction::RETURNDATASIZE => ops::returndatasize(bctx, vstack),
-                    Instruction::RETURNDATACOPY => ops::returndatacopy(bctx, vstack),
+                    Instruction::RETURNDATASIZE => ops::returndatasize(bctx),
+                    Instruction::RETURNDATACOPY => ops::returndatacopy(bctx),
 
                     // Runtime
-                    Instruction::POP => ops::pop(bctx, vstack),
+                    Instruction::POP => ops::pop(bctx),
 
-                    Instruction::MLOAD => ops::mload(bctx, vstack),
-                    Instruction::MSTORE => ops::mstore(bctx, vstack),
-                    Instruction::MSTORE8 => ops::mstore8(bctx, vstack),
+                    Instruction::MLOAD => ops::mload(bctx),
+                    Instruction::MSTORE => ops::mstore(bctx),
+                    Instruction::MSTORE8 => ops::mstore8(bctx),
 
                     Instruction::JUMP => match jump_block {
-                        Some(jump_block) => ops::jump(bctx, vstack, jump_block),
+                        Some(jump_block) => ops::jump(bctx, jump_block),
                         _ => return Err(Error::invariant_violation("JUMP without jump block")),
                     },
                     Instruction::JUMPI => match (jump_block, following_block) {
                         (Some(jump_block), Some(following_block)) => {
-                            ops::jumpi(bctx, vstack, jump_block, following_block.basic_block)
+                            ops::jumpi(bctx, jump_block, following_block.basic_block)
                         }
                         (Some(_), None) => {
                             return Err(Error::invariant_violation("JUMPI without following block"))
@@ -429,14 +439,14 @@ fn build_code_block<'ctx, 'b>(
                         }
                     },
 
-                    Instruction::PC => ops::pc(bctx, vstack, code_block.offset + pc),
+                    Instruction::PC => ops::pc(bctx, code_block.offset + pc),
 
-                    Instruction::CALL => ops::call(bctx, vstack),
+                    Instruction::CALL => ops::call(bctx),
 
-                    Instruction::RETURN => ops::_return(bctx, vstack),
-                    Instruction::REVERT => ops::revert(bctx, vstack),
-                    Instruction::INVALID => ops::invalid(bctx, vstack),
-                    Instruction::SELFDESTRUCT => ops::selfdestruct(bctx, vstack),
+                    Instruction::RETURN => ops::_return(bctx),
+                    Instruction::REVERT => ops::revert(bctx),
+                    Instruction::INVALID => ops::invalid(bctx),
+                    Instruction::SELFDESTRUCT => ops::selfdestruct(bctx),
 
                     // Not yet implemented
                     Instruction::ADDRESS => {

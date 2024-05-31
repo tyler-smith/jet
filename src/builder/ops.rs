@@ -63,25 +63,18 @@ fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<IntValue<'ctx>, E
 // Helpers
 //
 
-pub(crate) fn __sync_vstack<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    for value in vstack.iter() {
+pub(crate) fn __sync_vstack<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    for value in bctx.vstack().iter() {
         __call_stack_push_word(bctx, *value)?;
     }
-    vstack.clear();
+    bctx.vstack_mut().clear();
     Ok(())
 }
 
-fn __stack_push_word<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-    value: IntValue<'ctx>,
-) -> Result<(), Error> {
+fn __stack_push_word<'ctx>(bctx: &BuildCtx<'ctx, '_>, value: IntValue<'ctx>) -> Result<(), Error> {
     if bctx.env.opts().vstack() {
         trace!("Pushing to vstack: {:?}", value);
-        vstack.push(value);
+        bctx.vstack_mut().push(value);
         return Ok(());
     }
 
@@ -89,12 +82,9 @@ fn __stack_push_word<'ctx>(
     Ok(())
 }
 
-fn __stack_pop_1<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<StackPop1<'ctx>, Error> {
+fn __stack_pop_1<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<StackPop1<'ctx>, Error> {
     if bctx.env.opts().vstack() {
-        let a = match vstack.pop() {
+        let a = match bctx.vstack_mut().pop() {
             Some(a) => a,
             None => __call_stack_pop(bctx)?,
         };
@@ -105,11 +95,9 @@ fn __stack_pop_1<'ctx>(
     Ok(a)
 }
 
-fn __stack_pop_2<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<StackPop2<'ctx>, Error> {
+fn __stack_pop_2<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<StackPop2<'ctx>, Error> {
     if bctx.env.opts().vstack() {
+        let mut vstack = bctx.vstack_mut();
         let a = match vstack.pop() {
             Some(a) => a,
             None => __call_stack_pop(bctx)?,
@@ -127,11 +115,9 @@ fn __stack_pop_2<'ctx>(
     Ok((a, b))
 }
 
-fn __stack_pop_3<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<StackPop3<'ctx>, Error> {
+fn __stack_pop_3<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<StackPop3<'ctx>, Error> {
     if bctx.env.opts().vstack() {
+        let mut vstack = bctx.vstack_mut();
         let a = match vstack.pop() {
             Some(a) => a,
             None => __call_stack_pop(bctx)?,
@@ -154,11 +140,9 @@ fn __stack_pop_3<'ctx>(
     Ok((a, b, c))
 }
 
-fn __stack_pop_7<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<StackPop7<'ctx>, Error> {
+fn __stack_pop_7<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<StackPop7<'ctx>, Error> {
     if bctx.env.opts().vstack() {
+        let mut vstack = bctx.vstack_mut();
         let a = match vstack.pop() {
             Some(a) => a,
             None => __call_stack_pop(bctx)?,
@@ -201,19 +185,15 @@ fn __stack_pop_7<'ctx>(
     Ok((a, b, c, d, e, f, g))
 }
 
-pub(crate) fn __invalid_jump_return<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    __build_return(bctx, vstack, ReturnCode::InvalidJumpBlock)
+pub(crate) fn __invalid_jump_return<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __build_return(bctx, ReturnCode::InvalidJumpBlock)
 }
 
 pub(crate) fn __build_return<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
     return_value: ReturnCode,
 ) -> Result<(), Error> {
-    __sync_vstack(bctx, vstack)?;
+    __sync_vstack(bctx)?;
 
     let return_value = bctx.env.types().i8.const_int(return_value as u64, false);
     bctx.builder.build_return(Some(&return_value))?;
@@ -222,11 +202,7 @@ pub(crate) fn __build_return<'ctx>(
 
 // OPCode implementations
 //
-pub(crate) fn push<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-    bytes: [u8; 32],
-) -> Result<(), Error> {
+pub(crate) fn push<'ctx>(bctx: &BuildCtx<'ctx, '_>, bytes: [u8; 32]) -> Result<(), Error> {
     let t = bctx.env.types();
 
     let values = bytes
@@ -243,7 +219,7 @@ pub(crate) fn push<'ctx>(
         bctx.builder.build_store(arr_ptr, value_array)?;
         let word = bctx.builder.build_load(t.word, arr_ptr, "stack_word")?;
 
-        vstack.push(word.into_int_value());
+        bctx.vstack_mut().push(word.into_int_value());
 
         return Ok(());
     }
@@ -253,120 +229,82 @@ pub(crate) fn push<'ctx>(
     Ok(())
 }
 
-pub(crate) fn stop<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    __build_return(bctx, vstack, ReturnCode::Stop)
+pub(crate) fn stop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __build_return(bctx, ReturnCode::Stop)
 }
 
-pub(crate) fn add<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
-
-    // let a_32bit = bctx
-    //     .builder
-    //     .build_int_truncate(a, bctx.env.types().i32, "add_a")?;
-    // let b_32bit = bctx
-    //     .builder
-    //     .build_int_truncate(b, bctx.env.types().i32, "add_b")?;
+pub(crate) fn add<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
 
     let result = bctx.builder.build_int_add(a, b, "add_result")?;
-
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "add_result")?;
 
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn mul<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn mul<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_int_mul(a, b, "mul_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn sub<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn sub<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_int_sub(a, b, "sub_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn div<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn div<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     // let result = bctx.builder.build_int_signed_div(a, b, "div_result")?;
     let result = bctx.builder.build_int_unsigned_div(a, b, "div_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn sdiv<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn sdiv<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_int_signed_div(a, b, "sdiv_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn _mod<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn _mod<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_int_unsigned_rem(a, b, "mod_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn smod<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn smod<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_int_signed_rem(a, b, "smod_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn addmod<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b, c) = __stack_pop_3(bctx, vstack)?;
+pub(crate) fn addmod<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b, c) = __stack_pop_3(bctx)?;
     let result = bctx.builder.build_int_add(a, b, "addmod_add_result")?;
     let result = bctx
         .builder
         .build_int_unsigned_rem(result, c, "addmod_mod_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn mulmod<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b, c) = __stack_pop_3(bctx, vstack)?;
+pub(crate) fn mulmod<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b, c) = __stack_pop_3(bctx)?;
     let result = bctx.builder.build_int_mul(a, b, "mulmod_mul_result")?;
     let result = bctx
         .builder
         .build_int_unsigned_rem(result, c, "mulmod_mod_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
@@ -386,11 +324,8 @@ pub(crate) fn signextend(_: &BuildCtx) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn lt<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn lt<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx
         .builder
         .build_int_compare(inkwell::IntPredicate::ULT, a, b, "lt_result")?;
@@ -398,15 +333,12 @@ pub(crate) fn lt<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "lt_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn gt<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn gt<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx
         .builder
         .build_int_compare(inkwell::IntPredicate::UGT, a, b, "gt_result")?;
@@ -414,15 +346,12 @@ pub(crate) fn gt<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "gt_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn slt<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn slt<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx
         .builder
         .build_int_compare(inkwell::IntPredicate::SLT, a, b, "slt_result")?;
@@ -430,15 +359,12 @@ pub(crate) fn slt<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "slt_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn sgt<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn sgt<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx
         .builder
         .build_int_compare(inkwell::IntPredicate::SGT, a, b, "sgt_result")?;
@@ -446,15 +372,12 @@ pub(crate) fn sgt<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "sgt_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn eq<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn eq<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx
         .builder
         .build_int_compare(inkwell::IntPredicate::EQ, a, b, "eq_result")?;
@@ -462,15 +385,12 @@ pub(crate) fn eq<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "eq_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn iszero<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let a = __stack_pop_1(bctx, vstack)?;
+pub(crate) fn iszero<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let a = __stack_pop_1(bctx)?;
     let result = bctx.builder.build_int_compare(
         inkwell::IntPredicate::EQ,
         a,
@@ -481,55 +401,40 @@ pub(crate) fn iszero<'ctx>(
     let result = bctx
         .builder
         .build_int_z_extend(result, bctx.env.types().word, "iszero_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn and<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn and<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_and(a, b, "and_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn or<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn or<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_or(a, b, "or_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn xor<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn xor<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_xor(a, b, "xor_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn not<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let a = __stack_pop_1(bctx, vstack)?;
+pub(crate) fn not<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let a = __stack_pop_1(bctx)?;
     let result = bctx.builder.build_not(a, "not_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn byte<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (idx, word) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn byte<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (idx, word) = __stack_pop_2(bctx)?;
 
     // Truncate idx to 32 bits and then invert (31 - idx)
     let idx_i32 = bctx
@@ -562,46 +467,34 @@ pub(crate) fn byte<'ctx>(
     let byte_word =
         bctx.builder
             .build_int_z_extend(byte_int, bctx.env.types().word, "byte_word")?;
-    __stack_push_word(bctx, vstack, byte_word)?;
+    __stack_push_word(bctx, byte_word)?;
 
     Ok(())
 }
 
-pub(crate) fn shl<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn shl<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_left_shift(a, b, "shl_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn shr<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn shr<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_right_shift(a, b, false, "shr_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn sar<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (a, b) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn sar<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (a, b) = __stack_pop_2(bctx)?;
     let result = bctx.builder.build_right_shift(a, b, true, "sar_result")?;
-    __stack_push_word(bctx, vstack, result)?;
+    __stack_push_word(bctx, result)?;
     Ok(())
 }
 
-pub(crate) fn keccak256<'ctx>(
-    ctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let data = __stack_pop_1(ctx, vstack)?;
+pub(crate) fn keccak256<'ctx>(ctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let data = __stack_pop_1(ctx)?;
 
     let word_t = ctx.env.types().word;
 
@@ -623,14 +516,11 @@ pub(crate) fn keccak256<'ctx>(
         unsafe { IntValue::new(h_value_ref) }
     };
 
-    __stack_push_word(ctx, vstack, hash)?;
+    __stack_push_word(ctx, hash)?;
     Ok(())
 }
 
-pub(crate) fn returndatasize<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
+pub(crate) fn returndatasize<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
     // Load sub call ctx
     let sub_call_ctx_ptr = bctx.builder.build_load(
         bctx.env.types().ptr,
@@ -659,15 +549,12 @@ pub(crate) fn returndatasize<'ctx>(
         bctx.builder
             .build_int_z_extend(ret, bctx.env.types().word, "return_length_word")?;
 
-    __stack_push_word(bctx, vstack, return_length_word)?;
+    __stack_push_word(bctx, return_length_word)?;
     Ok(())
 }
 
-pub(crate) fn returndatacopy<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (dest_off, src_off, len) = __stack_pop_3(bctx, vstack)?;
+pub(crate) fn returndatacopy<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (dest_off, src_off, len) = __stack_pop_3(bctx)?;
 
     // Load sub call ctx
     let sub_call_ctx_ptr = bctx.builder.build_load(
@@ -706,19 +593,13 @@ pub(crate) fn returndatacopy<'ctx>(
     Ok(())
 }
 
-pub(crate) fn pop<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    __stack_pop_1(bctx, vstack)?;
+pub(crate) fn pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __stack_pop_1(bctx)?;
     Ok(())
 }
 
-pub(crate) fn mload<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let loc = __stack_pop_1(bctx, vstack)?;
+pub(crate) fn mload<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let loc = __stack_pop_1(bctx)?;
     let ret = bctx.builder.build_call(
         bctx.env.symbols().mload(),
         &[bctx.registers.exec_ctx.into(), loc.into()],
@@ -726,16 +607,13 @@ pub(crate) fn mload<'ctx>(
     )?;
 
     let loaded = unsafe { IntValue::new(ret.as_value_ref()) };
-    __stack_push_word(bctx, vstack, loaded)?;
+    __stack_push_word(bctx, loaded)?;
 
     Ok(())
 }
 
-pub(crate) fn mstore<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (loc, val) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn mstore<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (loc, val) = __stack_pop_2(bctx)?;
     bctx.builder.build_call(
         bctx.env.symbols().mstore(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
@@ -744,11 +622,8 @@ pub(crate) fn mstore<'ctx>(
     Ok(())
 }
 
-pub(crate) fn mstore8<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (loc, val) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn mstore8<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (loc, val) = __stack_pop_2(bctx)?;
     bctx.builder.build_call(
         bctx.env.symbols().mstore8(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
@@ -757,12 +632,8 @@ pub(crate) fn mstore8<'ctx>(
     Ok(())
 }
 
-pub(crate) fn jump<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-    jump_block: BasicBlock,
-) -> Result<(), Error> {
-    let pc = __stack_pop_1(bctx, vstack)?;
+pub(crate) fn jump<'ctx>(bctx: &BuildCtx<'ctx, '_>, jump_block: BasicBlock) -> Result<(), Error> {
+    let pc = __stack_pop_1(bctx)?;
 
     // Cast the 256bit pc to 32bits and store in the jump_ptr
     let pc_truncated = bctx
@@ -777,11 +648,11 @@ pub(crate) fn jump<'ctx>(
 
 pub(crate) fn jumpi<'ctx>(
     bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
+
     jump_block: BasicBlock,
     jump_else_block: BasicBlock,
 ) -> Result<(), Error> {
-    let (pc, b) = __stack_pop_2(bctx, vstack)?;
+    let (pc, b) = __stack_pop_2(bctx)?;
     bctx.builder.build_store(bctx.registers.jump_ptr, pc)?;
     let zero = bctx.env.types().word.const_zero();
     let cmp = bctx
@@ -792,22 +663,15 @@ pub(crate) fn jumpi<'ctx>(
     Ok(())
 }
 
-pub(crate) fn pc<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-    pc: usize,
-) -> Result<(), Error> {
+pub(crate) fn pc<'ctx>(bctx: &BuildCtx<'ctx, '_>, pc: usize) -> Result<(), Error> {
     let pc = bctx.env.types().word.const_int(pc as u64, false);
-    __stack_push_word(bctx, vstack, pc)?;
+    __stack_push_word(bctx, pc)?;
     Ok(())
 }
 
-pub(crate) fn call<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx, vstack)?;
-    // let to = __stack_pop_1(bctx, vstack)?;
+pub(crate) fn call<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx)?;
+    // let to = __stack_pop_1(bctx)?;
 
     // Create sub call context
     let call_ctx = bctx
@@ -845,43 +709,30 @@ pub(crate) fn call<'ctx>(
         .builder
         .build_int_z_extend(ret, bctx.env.types().word, "call_result")?;
 
-    __stack_push_word(bctx, vstack, ret)?;
+    __stack_push_word(bctx, ret)?;
 
     Ok(())
 }
 
-pub(crate) fn _return<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let (offset, size) = __stack_pop_2(bctx, vstack)?;
+pub(crate) fn _return<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let (offset, size) = __stack_pop_2(bctx)?;
 
     bctx.builder
         .build_store(bctx.registers.return_offset, offset)?;
     bctx.builder
         .build_store(bctx.registers.return_length, size)?;
 
-    __build_return(bctx, vstack, ReturnCode::ExplicitReturn)
+    __build_return(bctx, ReturnCode::ExplicitReturn)
 }
 
-pub(crate) fn revert<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    __build_return(bctx, vstack, ReturnCode::Revert)
+pub(crate) fn revert<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __build_return(bctx, ReturnCode::Revert)
 }
 
-pub(crate) fn invalid<'ctx>(
-    bctx: &BuildCtx<'ctx, '_>,
-    vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    __build_return(bctx, vstack, ReturnCode::Invalid)
+pub(crate) fn invalid<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __build_return(bctx, ReturnCode::Invalid)
 }
 
-pub(crate) fn selfdestruct<'ctx>(
-    _bctx: &BuildCtx<'ctx, '_>,
-    _vstack: &mut Vec<IntValue<'ctx>>,
-) -> Result<(), Error> {
-    let _ = _vstack;
+pub(crate) fn selfdestruct<'ctx>(_bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
     Err(Error::UnimplementedInstruction(Instruction::SELFDESTRUCT))
 }
