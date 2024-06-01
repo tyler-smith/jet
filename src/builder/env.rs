@@ -169,6 +169,7 @@ pub(crate) struct Symbols<'ctx> {
     stack_push_word: FunctionValue<'ctx>,
     stack_pop_word: FunctionValue<'ctx>,
     stack_peek_word: FunctionValue<'ctx>,
+    stack_swap_words: FunctionValue<'ctx>,
 
     memory_store_word: FunctionValue<'ctx>,
     memory_store_byte: FunctionValue<'ctx>,
@@ -191,6 +192,7 @@ impl<'ctx> Symbols<'ctx> {
         let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
         let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP)?;
         let stack_peek_word = module.get_function(runtime::FN_NAME_STACK_PEEK)?;
+        let stack_swap_words = module.get_function(runtime::FN_NAME_STACK_SWAP)?;
 
         let memory_store_word = module.get_function(runtime::FN_NAME_MEM_STORE_WORD)?;
         let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
@@ -212,6 +214,7 @@ impl<'ctx> Symbols<'ctx> {
             stack_push_word,
             stack_pop_word,
             stack_peek_word,
+            stack_swap_words,
 
             memory_store_word,
             memory_store_byte,
@@ -247,6 +250,10 @@ impl<'ctx> Symbols<'ctx> {
 
     pub(crate) fn stack_peek_word(&self) -> FunctionValue<'ctx> {
         self.stack_peek_word
+    }
+
+    pub(crate) fn stack_swap_words(&self) -> FunctionValue<'ctx> {
+        self.stack_swap_words
     }
 
     pub(crate) fn mstore(&self) -> FunctionValue<'ctx> {

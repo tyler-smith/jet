@@ -72,6 +72,17 @@ fn __call_stack_peek<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<IntVa
     Ok(a)
 }
 
+fn __call_stack_swap<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<(), Error> {
+    let index_value = bctx.env.types().i8.const_int(index as u64, false);
+
+    bctx.builder.build_call(
+        bctx.env.symbols().stack_swap_words(),
+        &[bctx.registers.exec_ctx.into(), index_value.into()],
+        "stack_swap_ret",
+    )?;
+    Ok(())
+}
+
 // Helpers
 //
 
@@ -245,6 +256,12 @@ pub(crate) fn dup<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<(), Erro
     __sync_vstack(bctx)?;
     let peeked_value = __call_stack_peek(bctx, index)?;
     __call_stack_push_word(bctx, peeked_value)?;
+    Ok(())
+}
+
+pub(crate) fn swap<'ctx>(bctx: &BuildCtx<'ctx, '_>, index: u8) -> Result<(), Error> {
+    __sync_vstack(bctx)?;
+    __call_stack_swap(bctx, index)?;
     Ok(())
 }
 

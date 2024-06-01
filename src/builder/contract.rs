@@ -466,6 +466,23 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::DUP15 => ops::dup(bctx, 15),
                     Instruction::DUP16 => ops::dup(bctx, 16),
 
+                    Instruction::SWAP1 => ops::swap(bctx, 1),
+                    Instruction::SWAP2 => ops::swap(bctx, 2),
+                    Instruction::SWAP3 => ops::swap(bctx, 3),
+                    Instruction::SWAP4 => ops::swap(bctx, 4),
+                    Instruction::SWAP5 => ops::swap(bctx, 5),
+                    Instruction::SWAP6 => ops::swap(bctx, 6),
+                    Instruction::SWAP7 => ops::swap(bctx, 7),
+                    Instruction::SWAP8 => ops::swap(bctx, 8),
+                    Instruction::SWAP9 => ops::swap(bctx, 9),
+                    Instruction::SWAP10 => ops::swap(bctx, 10),
+                    Instruction::SWAP11 => ops::swap(bctx, 11),
+                    Instruction::SWAP12 => ops::swap(bctx, 12),
+                    Instruction::SWAP13 => ops::swap(bctx, 13),
+                    Instruction::SWAP14 => ops::swap(bctx, 14),
+                    Instruction::SWAP15 => ops::swap(bctx, 15),
+                    Instruction::SWAP16 => ops::swap(bctx, 16),
+
                     // Not yet implemented
                     Instruction::ADDRESS => {
                         Err(Error::UnimplementedInstruction(Instruction::ADDRESS))
@@ -619,22 +636,6 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::PUSH30 => Err(Error::UnexpectedInstruction(Instruction::PUSH30)),
                     Instruction::PUSH31 => Err(Error::UnexpectedInstruction(Instruction::PUSH31)),
                     Instruction::PUSH32 => Err(Error::UnexpectedInstruction(Instruction::PUSH32)),
-                    Instruction::SWAP1 => Err(Error::UnexpectedInstruction(Instruction::SWAP1)),
-                    Instruction::SWAP2 => Err(Error::UnexpectedInstruction(Instruction::SWAP2)),
-                    Instruction::SWAP3 => Err(Error::UnexpectedInstruction(Instruction::SWAP3)),
-                    Instruction::SWAP4 => Err(Error::UnexpectedInstruction(Instruction::SWAP4)),
-                    Instruction::SWAP5 => Err(Error::UnexpectedInstruction(Instruction::SWAP5)),
-                    Instruction::SWAP6 => Err(Error::UnexpectedInstruction(Instruction::SWAP6)),
-                    Instruction::SWAP7 => Err(Error::UnexpectedInstruction(Instruction::SWAP7)),
-                    Instruction::SWAP8 => Err(Error::UnexpectedInstruction(Instruction::SWAP8)),
-                    Instruction::SWAP9 => Err(Error::UnexpectedInstruction(Instruction::SWAP9)),
-                    Instruction::SWAP10 => Err(Error::UnexpectedInstruction(Instruction::SWAP10)),
-                    Instruction::SWAP11 => Err(Error::UnexpectedInstruction(Instruction::SWAP11)),
-                    Instruction::SWAP12 => Err(Error::UnexpectedInstruction(Instruction::SWAP12)),
-                    Instruction::SWAP13 => Err(Error::UnexpectedInstruction(Instruction::SWAP13)),
-                    Instruction::SWAP14 => Err(Error::UnexpectedInstruction(Instruction::SWAP14)),
-                    Instruction::SWAP15 => Err(Error::UnexpectedInstruction(Instruction::SWAP15)),
-                    Instruction::SWAP16 => Err(Error::UnexpectedInstruction(Instruction::SWAP16)),
                 }
             }
             IteratorItem::Invalid(_) => {

@@ -140,6 +140,29 @@ entry:
   ret i256 %stack_word
 }
 
+
+define i1 @jet.stack.swap (%jet.types.exec_ctx* %0, i8 %swap.idx) #0 {
+entry:
+  ; Load top of stack
+  %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
+  %stack.ptr = load i32, ptr %stack.ptr.addr
+  %stack.ptr.sub_1 = sub i32 %stack.ptr, 1
+  %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr.sub_1
+  %top_word = load i256, ptr %stack.top.addr
+
+  ; Load swap word
+  %swap.idx.i32 = zext i8 %swap.idx to i32
+  %stack.swap.idx = sub i32 %stack.ptr.sub_1, %swap.idx.i32
+  %stack.swap.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.swap.idx 
+  %swap_word = load i256, ptr %stack.swap.addr
+
+  ; Store words in each other's place
+  store i256 %top_word, ptr %stack.swap.addr
+  store i256 %swap_word, ptr %stack.top.addr
+
+  ret i1 true
+}
+
 define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
 entry:
   %loc_i32 = trunc i256 %loc to i32

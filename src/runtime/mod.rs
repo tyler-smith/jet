@@ -22,6 +22,7 @@ pub const FN_NAME_STACK_PUSH_WORD: &str = "jet.stack.push.word";
 pub const FN_NAME_STACK_PUSH_BYTES: &str = "jet.stack.push.bytes";
 pub const FN_NAME_STACK_POP: &str = "jet.stack.pop";
 pub const FN_NAME_STACK_PEEK: &str = "jet.stack.peek";
+pub const FN_NAME_STACK_SWAP: &str = "jet.stack.swap";
 
 pub const FN_NAME_MEM_STORE_WORD: &str = "jet.mem.store.word";
 pub const FN_NAME_MEM_STORE_BYTE: &str = "jet.mem.store.byte";
