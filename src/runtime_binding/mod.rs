@@ -4,6 +4,24 @@ use colored::Colorize;
 
 use crate::runtime::exec;
 
+impl fmt::Display for exec::BlockInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "BlockInfo:\n  {{ number: {}, difficulty: {}, gas_limit: {}, timestamp: {}, base_fee: {}, blob_base_fee: {}, chain_id: {}, hash: {}, coinbase: {} }}\n",
+            self.number(),
+            self.difficulty(),
+            self.gas_limit(),
+            self.timestamp(),
+            self.base_fee(),
+            self.blob_base_fee(),
+            self.chain_id(),
+            self.hash().iter().take(32).fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x)),
+            self.coinbase().iter().take(20).fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
+        )
+    }
+}
+
 impl fmt::Display for exec::Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(

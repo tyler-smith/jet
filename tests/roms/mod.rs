@@ -6,6 +6,7 @@ use jet::{
     builder,
     builder::env::{Mode::Debug, Options},
     engine,
+    engine::Engine,
     runtime::{exec, ReturnCode},
 };
 
@@ -81,9 +82,11 @@ impl TestContractRun {
 }
 
 pub(crate) fn _test_rom_body(t: Test, use_vstack: bool) -> Result<(), Error> {
-    let context = Context::create();
+    let llvm_ctx = Context::create();
     let opts = Options::new(Debug, use_vstack, false, true);
-    let mut engine = jet::engine::Engine::new(&context, opts)?;
+    let block_info = new_test_block_info();
+
+    let mut engine = Engine::new(&llvm_ctx, opts)?;
 
     assert_ne!(t.roms.len(), 0);
     for (i, rom) in t.roms.iter().enumerate() {
@@ -93,7 +96,7 @@ pub(crate) fn _test_rom_body(t: Test, use_vstack: bool) -> Result<(), Error> {
         engine.build_contract(prefixed_addr.as_str(), rom.as_slice())?;
     }
 
-    let run = engine.run_contract("0x0000")?;
+    let run = engine.run_contract("0x0000", &block_info)?;
     t.expected.assert_eq(&run);
 
     Ok(())
@@ -103,4 +106,17 @@ pub(crate) fn stack_word(bytes: &[u8]) -> [u8; 32] {
     let mut word = [0; 32];
     word[..bytes.len()].copy_from_slice(bytes);
     word
+}
+
+fn new_test_block_info() -> exec::BlockInfo {
+    let hash = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31,
+    ];
+    let coinbase = [
+        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    ];
+    exec::BlockInfo::new(
+        42, 100, 100, 1717354173, 5_000_000, 1_000_000, 1, hash, coinbase,
+    )
 }

@@ -91,7 +91,6 @@ pub struct Types<'ctx> {
     pub return_length: inkwell::types::IntType<'ctx>,
 
     pub exec_ctx: inkwell::types::StructType<'ctx>,
-    pub contract_fn_params: Vec<inkwell::types::BasicMetadataTypeEnum<'ctx>>,
     pub contract_fn: inkwell::types::FunctionType<'ctx>,
 }
 
@@ -131,9 +130,10 @@ impl<'ctx> Types<'ctx> {
             PACK_STRUCTS,
         );
 
-        // contract func sig: func(ctx &exec_ctx) i8
-        let contract_fn_params = vec![context.ptr_type(AddressSpace::default()).into()];
-        let contract_fn = context.i8_type().fn_type(&contract_fn_params, false);
+        // contract func sig: func(ctx: &exec_ctx, block_info: &BlockInfo) i8
+        let contract_fn = context
+            .i8_type()
+            .fn_type(&vec![ptr.into(), ptr.into()], false);
 
         Self {
             i8,
@@ -154,7 +154,6 @@ impl<'ctx> Types<'ctx> {
             return_offset,
             return_length,
             exec_ctx,
-            contract_fn_params,
             contract_fn,
         }
     }

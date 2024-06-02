@@ -15,7 +15,7 @@ use crate::{
     runtime,
     runtime::{
         exec,
-        exec::{ContractFunc, ContractRun},
+        exec::{BlockInfo, ContractFunc, ContractRun},
         functions,
     },
 };
@@ -58,7 +58,7 @@ impl<'ctx> Engine<'ctx> {
         Ok(())
     }
 
-    pub fn run_contract(&self, addr: &str) -> Result<ContractRun, Error> {
+    pub fn run_contract(&self, addr: &str, block_info: &BlockInfo) -> Result<ContractRun, Error> {
         // Create a JIT execution engine
         let jit = self
             .build_manager
@@ -77,7 +77,9 @@ impl<'ctx> Engine<'ctx> {
 
         trace!("Running function...");
         let ctx = exec::Context::new();
-        let result = unsafe { contract_exec_fn.call(&ctx as *const exec::Context) };
+        let result = unsafe {
+            contract_exec_fn.call(&ctx as *const exec::Context, block_info as *const BlockInfo)
+        };
         trace!("Function returned");
 
         Ok(ContractRun::new(result, ctx))
@@ -97,7 +99,7 @@ impl<'ctx> Engine<'ctx> {
         );
         ee.add_global_mapping(
             &symbols.new_exec_ctx(),
-            functions::jet_new_exec_ctx as usize,
+            functions::jet_new_main_exec_ctx as usize,
         );
         ee.add_global_mapping(
             &symbols.contract_call_return_data_copy(),

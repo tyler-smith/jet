@@ -4,7 +4,7 @@ use log::info;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::instructions::Instruction;
+use jet::{instructions::Instruction, runtime};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -73,29 +73,29 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         0x01,
         Instruction::PUSH1.opcode(),
         0x02,
-        // Instruction::PUSH1.opcode(),
-        // 0x03,
-        // Instruction::PUSH1.opcode(),
-        // 0x04,
-        // Instruction::PUSH1.opcode(),
-        // 0x05,
-        // Instruction::DUP1.opcode(),
-        // Instruction::DUP3.opcode(),
-        // Instruction::DUP5.opcode(),
-        // Instruction::DUP7.opcode(),
-        // Instruction::DUP9.opcode(),
-        Instruction::SWAP1.opcode(),
         Instruction::PUSH1.opcode(),
         0x03,
-        Instruction::SWAP1.opcode(),
-        Instruction::SWAP2.opcode(),
+        Instruction::PUSH1.opcode(),
+        0x04,
+        Instruction::PUSH1.opcode(),
+        0x05,
+        Instruction::DUP1.opcode(),
+        Instruction::DUP3.opcode(),
+        Instruction::DUP5.opcode(),
+        Instruction::DUP7.opcode(),
+        Instruction::DUP9.opcode(),
     ];
 
+    // Create the LLVM JIT engine
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
+    // Build the contract
     engine.build_contract("0x1234", alice_rom.as_slice())?;
-    let run = engine.run_contract("0x1234")?;
+
+    // Run the contract with a test block
+    let block_info = new_test_block_info();
+    let run = engine.run_contract("0x1234", &block_info)?;
     info!("{}", run);
 
     Ok(())
@@ -123,4 +123,17 @@ fn main() -> Result<(), Error> {
     }?;
 
     Ok(())
+}
+
+fn new_test_block_info() -> runtime::exec::BlockInfo {
+    let hash = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31,
+    ];
+    let coinbase = [
+        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
+    ];
+    runtime::exec::BlockInfo::new(
+        42, 100, 100, 1717354173, 5_000_000, 1_000_000, 1, hash, coinbase,
+    )
 }

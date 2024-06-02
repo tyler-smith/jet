@@ -80,7 +80,7 @@ pub extern "C" fn jet_contract_call_return_data_copy(
 }
 
 #[no_mangle]
-pub extern "C" fn jet_new_exec_ctx() -> usize {
+pub extern "C" fn jet_new_main_exec_ctx() -> usize {
     let ctx = exec::Context::new();
     Box::into_raw(Box::new(ctx)) as usize
 }

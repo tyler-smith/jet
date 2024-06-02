@@ -1,5 +1,83 @@
 use crate::runtime::*;
 
+type Hash = [u8; 32];
+type Address = [u8; 20];
+
+#[repr(C)]
+pub struct BlockInfo {
+    number: u64,
+    difficulty: u64,
+    gas_limit: u64,
+    timestamp: u64,
+    base_fee: u64,
+    blob_base_fee: u64,
+    chain_id: u64,
+    hash: Hash,
+    coinbase: Address,
+}
+
+impl BlockInfo {
+    pub fn new(
+        number: u64,
+        difficulty: u64,
+        gas_limit: u64,
+        timestamp: u64,
+        base_fee: u64,
+        blob_base_fee: u64,
+        chain_id: u64,
+        hash: Hash,
+        coinbase: Address,
+    ) -> Self {
+        BlockInfo {
+            number,
+            difficulty,
+            gas_limit,
+            timestamp,
+            base_fee,
+            blob_base_fee,
+            chain_id,
+            hash,
+            coinbase,
+        }
+    }
+
+    pub fn number(&self) -> u64 {
+        self.number
+    }
+
+    pub fn difficulty(&self) -> u64 {
+        self.difficulty
+    }
+
+    pub fn gas_limit(&self) -> u64 {
+        self.gas_limit
+    }
+
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    pub fn base_fee(&self) -> u64 {
+        self.base_fee
+    }
+
+    pub fn blob_base_fee(&self) -> u64 {
+        self.blob_base_fee
+    }
+
+    pub fn chain_id(&self) -> u64 {
+        self.chain_id
+    }
+
+    pub fn hash(&self) -> &Hash {
+        &self.hash
+    }
+
+    pub fn coinbase(&self) -> &Address {
+        &self.coinbase
+    }
+}
+
 #[repr(C)]
 pub struct Context {
     stack_ptr: u32,
@@ -109,4 +187,4 @@ impl ContractRun {
     }
 }
 
-pub type ContractFunc = unsafe extern "C" fn(*const Context) -> ReturnCode;
+pub type ContractFunc = unsafe extern "C" fn(*const Context, *const BlockInfo) -> ReturnCode;
