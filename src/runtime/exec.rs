@@ -1,7 +1,10 @@
 use crate::runtime::*;
 
-type Hash = [u8; 32];
-type Address = [u8; 20];
+pub const BLOCK_HASH_HISTORY_SIZE: usize = 256;
+
+pub type Hash = [u8; 32];
+pub type Address = [u8; 20];
+pub type HashHistory = [Hash; BLOCK_HASH_HISTORY_SIZE];
 
 #[repr(C)]
 pub struct BlockInfo {
@@ -13,6 +16,7 @@ pub struct BlockInfo {
     blob_base_fee: u64,
     chain_id: u64,
     hash: Hash,
+    hash_history: HashHistory,
     coinbase: Address,
 }
 
@@ -26,6 +30,7 @@ impl BlockInfo {
         blob_base_fee: u64,
         chain_id: u64,
         hash: Hash,
+        hash_history: HashHistory,
         coinbase: Address,
     ) -> Self {
         BlockInfo {
@@ -37,6 +42,7 @@ impl BlockInfo {
             blob_base_fee,
             chain_id,
             hash,
+            hash_history,
             coinbase,
         }
     }
@@ -71,6 +77,10 @@ impl BlockInfo {
 
     pub fn hash(&self) -> &Hash {
         &self.hash
+    }
+
+    pub fn hash_history(&self) -> &HashHistory {
+        &self.hash_history
     }
 
     pub fn coinbase(&self) -> &Address {
