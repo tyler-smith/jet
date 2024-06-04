@@ -16,8 +16,11 @@ use crate::{
 const VSTACK_INIT_SIZE: usize = 32;
 
 pub(crate) struct Registers<'ctx> {
+    // Function parameters
     pub(crate) exec_ctx: inkwell::values::PointerValue<'ctx>,
-    // pub(crate) stack_ptr: inkwell::values::PointerValue<'ctx>,
+    pub(crate) block_info: inkwell::values::PointerValue<'ctx>,
+
+    // Pointers into the exec context
     pub(crate) jump_ptr: inkwell::values::PointerValue<'ctx>,
     pub(crate) return_offset: inkwell::values::PointerValue<'ctx>,
     pub(crate) return_length: inkwell::values::PointerValue<'ctx>,
@@ -31,12 +34,9 @@ impl<'ctx> Registers<'ctx> {
         func: FunctionValue<'ctx>,
     ) -> Self {
         let t = env.types();
-        let exec_ctx = func.get_first_param().unwrap().into_pointer_value();
+        let exec_ctx = func.get_nth_param(0).unwrap().into_pointer_value();
+        let block_info = func.get_nth_param(1).unwrap().into_pointer_value();
 
-        // let stack_ptr = builder
-        //     .build_struct_gep(t.exec_ctx, exec_ctx, 0, "stack_ptr")
-        //     .unwrap()
-        //     .into();
         let jump_ptr = builder
             .build_struct_gep(t.exec_ctx, exec_ctx, 1, "jump_ptr")
             .unwrap();
@@ -52,7 +52,8 @@ impl<'ctx> Registers<'ctx> {
 
         Self {
             exec_ctx,
-            // stack_ptr,
+            block_info,
+
             jump_ptr,
             return_offset,
             return_length,
@@ -411,6 +412,10 @@ fn build_code_block<'ctx, 'b>(
                     Instruction::RETURNDATASIZE => ops::returndatasize(bctx),
                     Instruction::RETURNDATACOPY => ops::returndatacopy(bctx),
 
+                    // Block information
+                    Instruction::BLOCKHASH => ops::blockhash(bctx),
+                    // Instruction::NUMBER => ops::blockhash(bctx),
+
                     // Runtime
                     Instruction::POP => ops::pop(bctx),
 
@@ -527,9 +532,6 @@ fn build_code_block<'ctx, 'b>(
                         Err(Error::UnimplementedInstruction(Instruction::EXTCODEHASH))
                     }
 
-                    Instruction::BLOCKHASH => {
-                        Err(Error::UnimplementedInstruction(Instruction::BLOCKHASH))
-                    }
                     Instruction::COINBASE => {
                         Err(Error::UnimplementedInstruction(Instruction::COINBASE))
                     }

@@ -72,6 +72,7 @@ pub struct Types<'ctx> {
     // Primitives
     pub i8: inkwell::types::IntType<'ctx>,
     pub i32: inkwell::types::IntType<'ctx>,
+    pub i64: inkwell::types::IntType<'ctx>,
     pub i160: inkwell::types::IntType<'ctx>,
     pub ptr: inkwell::types::PointerType<'ctx>,
 
@@ -91,6 +92,7 @@ pub struct Types<'ctx> {
     pub return_length: inkwell::types::IntType<'ctx>,
 
     pub exec_ctx: inkwell::types::StructType<'ctx>,
+    pub block_info: inkwell::types::StructType<'ctx>,
     pub contract_fn: inkwell::types::FunctionType<'ctx>,
 }
 
@@ -99,6 +101,7 @@ impl<'ctx> Types<'ctx> {
         // Primitives
         let i8 = context.i8_type();
         let i32 = context.i32_type();
+        let i64 = context.i64_type();
         let i160 = context.custom_width_int_type(160);
         let ptr = context.ptr_type(AddressSpace::default());
 
@@ -130,6 +133,21 @@ impl<'ctx> Types<'ctx> {
             PACK_STRUCTS,
         );
 
+        let block_info = context.struct_type(
+            &[
+                i64.into(),
+                i64.into(),
+                i64.into(),
+                i64.into(),
+                i64.into(),
+                i64.into(),
+                i64.into(),
+                word.into(),
+                i160.into(),
+            ],
+            PACK_STRUCTS,
+        );
+
         // contract func sig: func(ctx: &exec_ctx, block_info: &BlockInfo) i8
         let contract_fn = context
             .i8_type()
@@ -138,6 +156,7 @@ impl<'ctx> Types<'ctx> {
         Self {
             i8,
             i32,
+            i64,
             i160,
             ptr,
 
@@ -153,7 +172,9 @@ impl<'ctx> Types<'ctx> {
             jump_ptr,
             return_offset,
             return_length,
+
             exec_ctx,
+            block_info,
             contract_fn,
         }
     }

@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     builder::BuilderError,
-    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue},
+    values::{ArrayValue, AsValueRef, CallSiteValue, IntValue, PointerValue},
 };
 use log::trace;
 
@@ -220,6 +220,26 @@ pub(crate) fn __build_return<'ctx>(
 
     let return_value = bctx.env.types().i8.const_int(return_value as u64, false);
     bctx.builder.build_return(Some(&return_value))?;
+    Ok(())
+}
+
+// Block info getter helpers
+//
+
+fn __block_info_hash<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    let hash_ptr = bctx.builder.build_struct_gep(
+        bctx.env.types().block_info,
+        bctx.registers.block_info,
+        7,
+        "block_info_hash_ptr",
+    )?;
+
+    let hash = bctx
+        .builder
+        .build_load(bctx.env.types().word, hash_ptr, "block_info_hash")?;
+
+    let hash = unsafe { IntValue::new(hash.as_value_ref()) };
+    __stack_push_word(bctx, hash)?;
     Ok(())
 }
 
@@ -564,8 +584,7 @@ pub(crate) fn returndatasize<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Erro
         "sub_call_ctx_ptr",
     )?;
 
-    let sub_call_ctx_ptr =
-        unsafe { inkwell::values::PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
+    let sub_call_ctx_ptr = unsafe { PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
 
     // GetElementPointer to the return length
     let return_length_ptr = bctx.builder.build_struct_gep(
@@ -599,8 +618,7 @@ pub(crate) fn returndatacopy<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Erro
         "sub_call_ctx_ptr",
     )?;
 
-    let sub_call_ctx_ptr =
-        unsafe { inkwell::values::PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
+    let sub_call_ctx_ptr = unsafe { PointerValue::new(sub_call_ctx_ptr.as_value_ref()) };
 
     // Truncate parameters to correct bit sizes
     let dest_off =
@@ -626,6 +644,11 @@ pub(crate) fn returndatacopy<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Erro
         "return_data_copy",
     )?;
 
+    Ok(())
+}
+
+pub(crate) fn blockhash<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
+    __block_info_hash(bctx)?;
     Ok(())
 }
 
@@ -707,13 +730,12 @@ pub(crate) fn pc<'ctx>(bctx: &BuildCtx<'ctx, '_>, pc: usize) -> Result<(), Error
 
 pub(crate) fn call<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
     let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx)?;
-    // let to = __stack_pop_1(bctx)?;
 
     // Create sub call context
     let call_ctx = bctx
         .builder
         .build_call(bctx.env.symbols().new_exec_ctx(), &[], "call_ctx")?;
-    let call_ctx_ptr = unsafe { inkwell::values::PointerValue::new(call_ctx.as_value_ref()) };
+    let call_ctx_ptr = unsafe { PointerValue::new(call_ctx.as_value_ref()) };
 
     // Truncate parameters to correct bit sizes
     let to = bctx

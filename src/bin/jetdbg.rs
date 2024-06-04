@@ -4,7 +4,7 @@ use log::info;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::{instructions::Instruction, runtime};
+use jet::{instructions::Instruction, runtime, runtime::exec};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -59,32 +59,38 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    // let alice_rom = [
-    //     Instruction::PUSH2.opcode(),
-    //     0xFF,
-    //     0x00,
-    //     Instruction::PUSH1.opcode(),
-    //     30,
-    //     Instruction::BYTE.opcode(),
-    // ];
-
     let alice_rom = [
+        Instruction::PUSH2.opcode(),
+        0xFF,
+        0x00,
+        Instruction::PUSH2.opcode(),
+        0x00,
+        0xFF,
+        Instruction::ADD.opcode(),
         Instruction::PUSH1.opcode(),
-        0x01,
-        Instruction::PUSH1.opcode(),
-        0x02,
-        Instruction::PUSH1.opcode(),
-        0x03,
-        Instruction::PUSH1.opcode(),
-        0x04,
-        Instruction::PUSH1.opcode(),
-        0x05,
-        Instruction::DUP1.opcode(),
-        Instruction::DUP3.opcode(),
-        Instruction::DUP5.opcode(),
-        Instruction::DUP7.opcode(),
-        Instruction::DUP9.opcode(),
+        1,
+        Instruction::ADD.opcode(),
+        // Instruction::BYTE.opcode(),
     ];
+
+    // let alice_rom = [
+    //     Instruction::BLOCKHASH.opcode(),
+    //     // Instruction::PUSH1.opcode(),
+    //     // 0x01,
+    //     // Instruction::PUSH1.opcode(),
+    //     // 0x02,
+    //     // Instruction::PUSH1.opcode(),
+    //     // 0x03,
+    //     // Instruction::PUSH1.opcode(),
+    //     // 0x04,
+    //     // Instruction::PUSH1.opcode(),
+    //     // 0x05,
+    //     // Instruction::DUP1.opcode(),
+    //     // Instruction::DUP3.opcode(),
+    //     // Instruction::DUP5.opcode(),
+    //     // Instruction::DUP7.opcode(),
+    //     // Instruction::DUP9.opcode(),
+    // ];
 
     // Create the LLVM JIT engine
     let context = Context::create();
@@ -130,10 +136,31 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31,
     ];
+    let hash_history = new_test_block_info_hash_history();
     let coinbase = [
         19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
     ];
-    runtime::exec::BlockInfo::new(
-        42, 100, 100, 1717354173, 5_000_000, 1_000_000, 1, hash, coinbase,
+
+    exec::BlockInfo::new(
+        42,
+        100,
+        100,
+        1717354173,
+        5_000_000,
+        1_000_000,
+        1,
+        hash,
+        hash_history,
+        coinbase,
     )
+}
+
+fn new_test_block_info_hash_history() -> exec::HashHistory {
+    let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
+
+    for i in 0..exec::BLOCK_HASH_HISTORY_SIZE {
+        hash_history[i][31] = i as u8;
+    }
+
+    hash_history
 }
