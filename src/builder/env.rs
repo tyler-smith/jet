@@ -7,10 +7,7 @@ use inkwell::{
     values::{FunctionValue, GlobalValue},
 };
 
-use crate::{
-    runtime,
-    runtime::{STACK_SIZE_WORDS, WORD_SIZE_BITS},
-};
+use crate::{runtime, runtime::STACK_SIZE_WORDS};
 
 const PACK_STRUCTS: bool = true;
 
@@ -74,11 +71,11 @@ pub struct Types<'ctx> {
     pub i32: inkwell::types::IntType<'ctx>,
     pub i64: inkwell::types::IntType<'ctx>,
     pub i160: inkwell::types::IntType<'ctx>,
+    pub i256: inkwell::types::IntType<'ctx>,
     pub ptr: inkwell::types::PointerType<'ctx>,
+    pub word_bytes: inkwell::types::ArrayType<'ctx>,
 
     // Architecture
-    pub word: inkwell::types::IntType<'ctx>,
-    pub word_array: inkwell::types::ArrayType<'ctx>,
     pub stack: inkwell::types::ArrayType<'ctx>,
 
     pub mem_len: inkwell::types::IntType<'ctx>,
@@ -103,12 +100,12 @@ impl<'ctx> Types<'ctx> {
         let i32 = context.i32_type();
         let i64 = context.i64_type();
         let i160 = context.custom_width_int_type(160);
+        let i256 = context.custom_width_int_type(256);
         let ptr = context.ptr_type(AddressSpace::default());
+        let word_bytes = i8.array_type(32);
 
         // Architecture
-        let word = context.custom_width_int_type(WORD_SIZE_BITS);
-        let word_array = i8.array_type(32);
-        let stack = word.array_type(STACK_SIZE_WORDS);
+        let stack = i256.array_type(STACK_SIZE_WORDS);
 
         let mem_len = context.i32_type();
         let mem_cap = context.i32_type();
@@ -142,7 +139,7 @@ impl<'ctx> Types<'ctx> {
                 i64.into(),
                 i64.into(),
                 i64.into(),
-                word.into(),
+                i256.into(),
                 i160.into(),
             ],
             PACK_STRUCTS,
@@ -158,10 +155,10 @@ impl<'ctx> Types<'ctx> {
             i32,
             i64,
             i160,
+            i256,
             ptr,
+            word_bytes,
 
-            word,
-            word_array,
             stack,
 
             mem_len,
@@ -185,8 +182,9 @@ pub(crate) struct Symbols<'ctx> {
 
     new_exec_ctx: FunctionValue<'ctx>,
 
-    stack_push_bytes: FunctionValue<'ctx>,
-    stack_push_word: FunctionValue<'ctx>,
+    stack_push_i256: FunctionValue<'ctx>,
+    stack_push_ptr: FunctionValue<'ctx>,
+
     stack_pop_word: FunctionValue<'ctx>,
     stack_peek_word: FunctionValue<'ctx>,
     stack_swap_words: FunctionValue<'ctx>,
@@ -208,8 +206,9 @@ impl<'ctx> Symbols<'ctx> {
 
         let new_exec_ctx = module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
 
-        let stack_push_bytes = module.get_function(runtime::FN_NAME_STACK_PUSH_BYTES)?;
-        let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
+        let stack_push_i256 = module.get_function(runtime::FN_NAME_STACK_PUSH_I256)?;
+        let stack_push_ptr = module.get_function(runtime::FN_NAME_STACK_PUSH_PTR)?;
+
         let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP)?;
         let stack_peek_word = module.get_function(runtime::FN_NAME_STACK_PEEK)?;
         let stack_swap_words = module.get_function(runtime::FN_NAME_STACK_SWAP)?;
@@ -230,8 +229,9 @@ impl<'ctx> Symbols<'ctx> {
 
             new_exec_ctx,
 
-            stack_push_bytes,
-            stack_push_word,
+            stack_push_ptr,
+            stack_push_i256,
+
             stack_pop_word,
             stack_peek_word,
             stack_swap_words,
@@ -256,12 +256,12 @@ impl<'ctx> Symbols<'ctx> {
         self.new_exec_ctx
     }
 
-    pub(crate) fn stack_push_bytes(&self) -> FunctionValue<'ctx> {
-        self.stack_push_bytes
+    pub(crate) fn stack_push_ptr(&self) -> FunctionValue<'ctx> {
+        self.stack_push_ptr
     }
 
-    pub(crate) fn stack_push_word(&self) -> FunctionValue<'ctx> {
-        self.stack_push_word
+    pub(crate) fn stack_push_i256(&self) -> FunctionValue<'ctx> {
+        self.stack_push_i256
     }
 
     pub(crate) fn stack_pop_word(&self) -> FunctionValue<'ctx> {

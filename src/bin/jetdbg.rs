@@ -54,10 +54,29 @@ enum Error {
 fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     let build_opts = jet::builder::env::Options::new(
         args.mode.unwrap_or(jet::builder::env::Mode::Debug),
-        args.use_vstack.unwrap_or(true),
+        args.use_vstack.unwrap_or(false),
         args.emit_llvm.unwrap_or(true),
         args.assert.unwrap_or(true),
     );
+
+    // let alice_rom = [
+    //     Instruction::PUSH2.opcode(),
+    //     0xFF,
+    //     0x00,
+    //     Instruction::PUSH2.opcode(),
+    //     0x00,
+    //     0xFF,
+    //     Instruction::ADD.opcode(),
+    //     Instruction::PUSH1.opcode(),
+    //     1,
+    //     Instruction::ADD.opcode(),
+    //     Instruction::DUP1.opcode(),
+    //     Instruction::PUSH1.opcode(),
+    //     2,
+    //     Instruction::MUL.opcode(),
+    //     Instruction::PC.opcode(),
+    //     // Instruction::BYTE.opcode(),
+    // ];
 
     let alice_rom = [
         Instruction::PUSH2.opcode(),
@@ -71,6 +90,51 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         1,
         Instruction::ADD.opcode(),
         // Instruction::BYTE.opcode(),
+    ];
+
+    // let alice_rom = [
+    //     Instruction::PUSH1.opcode(), // Output len
+    //     0x0A,
+    //     Instruction::PUSH1.opcode(), // Output offset
+    //     0x00,
+    //     Instruction::PUSH1.opcode(), // Input len
+    //     0x00,
+    //     Instruction::PUSH1.opcode(), // Input offset
+    //     0x00,
+    //     Instruction::PUSH1.opcode(), // Value
+    //     0x00,
+    //     Instruction::PUSH2.opcode(), // Address
+    //     0x00,
+    //     0x01,
+    //     Instruction::PUSH1.opcode(), // Gas
+    //     0x00,
+    //     Instruction::CALL.opcode(), // Mem: 0x00FF
+    //     Instruction::RETURNDATASIZE.opcode(),
+    //     Instruction::PUSH1.opcode(), // Len
+    //     0x02,
+    //     Instruction::PUSH1.opcode(), // Src offset
+    //     0x00,
+    //     Instruction::PUSH1.opcode(), // Dest offset
+    //     0x02,
+    //     Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
+    // ];
+
+    let bob_rom = [
+        Instruction::PUSH1.opcode(),
+        0xFF,
+        Instruction::PUSH1.opcode(),
+        0x01,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF
+        Instruction::PUSH1.opcode(),
+        0xFF,
+        Instruction::PUSH1.opcode(),
+        0x0A,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
+        Instruction::PUSH1.opcode(),
+        0x0A,
+        Instruction::PUSH1.opcode(),
+        0x00,
+        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
     ];
 
     // let alice_rom = [
@@ -92,12 +156,15 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     //     // Instruction::DUP9.opcode(),
     // ];
 
+    // let alice_rom = [Instruction::PC.opcode()];
+
     // Create the LLVM JIT engine
     let context = Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
     // Build the contract
     engine.build_contract("0x1234", alice_rom.as_slice())?;
+    engine.build_contract("0x0001", bob_rom.as_slice())?;
 
     // Run the contract with a test block
     let block_info = new_test_block_info();

@@ -35,6 +35,8 @@ declare i8 @jet.ops.keccak256(ptr)
 ;
 ; Types
 ;
+%jet.types.word = type [32 x i8]
+
 %jet.types.mem_buf = type [1024 x i8]
 
 %jet.types.mem = type <{
@@ -45,8 +47,8 @@ declare i8 @jet.ops.keccak256(ptr)
 }>
 
 %jet.types.block_info = type <{
-  i256, ; balance
-  i256, ; gas price
+  %jet.types.word, ; balance
+  %jet.types.word, ; gas price
   i160, ; address
   i32,  ; code size
   i160  ; origin
@@ -60,7 +62,7 @@ declare i8 @jet.ops.keccak256(ptr)
   i32, ; return offset
   i32, ; return length
   ptr,; sub call ctx
-  [1024 x i256], ; stack
+  [1024 x %jet.types.word], ; stack
 
   [1024 x i8], ; memory
   i32, ; mem length
@@ -75,9 +77,7 @@ declare i8 @jet.ops.keccak256(ptr)
 attributes #0 = { alwaysinline nounwind }
 
 
-; Pushes a word onto the stack and incs the stack ptr.
-; Returns true if the operation was successful, false if the stack is full.
-define i1 @jet.stack.push.word (%jet.types.exec_ctx*, i256) #0 {
+define i1 @jet.stack.push.i256 (%jet.types.exec_ctx*, i256) #0 {
 entry:
   ; Load stack pointer
   %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
@@ -96,19 +96,26 @@ entry:
   ret i1 true
 }
 
-; Pushes an array of 32 bytes onto the stack as a word, and incs the stack ptr.
-; Returns true if the operation was successful, false if the stack is full.
-define i1 @jet.stack.push.bytes (%jet.types.exec_ctx*, [32 x i8]) #0 {
+define i1 @jet.stack.push.ptr (%jet.types.exec_ctx*, %jet.types.word*) #0 {
 entry:
-  ; Cast byte array to word and send to @jet.stack.push.word
-  %stack_bytes_ptr = alloca [32 x i8]
-  store [32 x i8] %1, [32 x i8]* %stack_bytes_ptr
-  %stack_word = load i256, ptr %stack_bytes_ptr, align 8
-  %result = call i1 @jet.stack.push.word (%jet.types.exec_ctx* %0, i256 %stack_word)
-  ret i1 %result
+  ; Load stack pointer
+  %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
+  %stack.ptr = load i32, ptr %stack.ptr.addr
+  %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr
+
+  ; TODO: Check if we'll break the stack
+
+  ; Store word
+  call void @llvm.memcpy.inline.p0.p0.i64(ptr %stack.top.addr, ptr %1, i64 32, i1 false)
+
+  ; Increment stack pointer
+  %stack.ptr.next = add i32 %stack.ptr, 1
+  store i32 %stack.ptr.next, ptr %stack.ptr.addr
+
+  ret i1 true
 }
 
-define i256 @jet.stack.pop (%jet.types.exec_ctx* %0) #0 {
+define %jet.types.word* @jet.stack.pop (%jet.types.exec_ctx* %0) #0 {
 entry:
   ; Load stack pointer
   %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
@@ -116,16 +123,13 @@ entry:
   %stack.ptr.sub_1 = sub i32 %stack.ptr, 1
   %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr.sub_1
 
-  ; Load word
-  %stack_word = load i256, ptr %stack.top.addr, align 8
-
   ; Decrement stack pointer
   store i32 %stack.ptr.sub_1, ptr %stack.ptr.addr, align 4
 
-  ret i256 %stack_word
+  ret %jet.types.word* %stack.top.addr
 }
 
-define i256 @jet.stack.peek (%jet.types.exec_ctx* %0, i8 %peek_idx) #0 {
+define %jet.types.word* @jet.stack.peek (%jet.types.exec_ctx* %0, i8 %peek_idx) #0 {
 entry:
   ; Load stack pointer and subtract the peek index
   %stack.ptr.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 0
@@ -135,9 +139,7 @@ entry:
   %stack.peek.ptr = sub i32 %stack.ptr, %peek_idx.i32
   %stack.peek.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.peek.ptr 
 
-  ; Load word
-  %stack_word = load i256, ptr %stack.peek.addr
-  ret i256 %stack_word
+  ret %jet.types.word* %stack.peek.addr
 }
 
 
@@ -148,37 +150,37 @@ entry:
   %stack.ptr = load i32, ptr %stack.ptr.addr
   %stack.ptr.sub_1 = sub i32 %stack.ptr, 1
   %stack.top.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.ptr.sub_1
-  %top_word = load i256, ptr %stack.top.addr
+  %top_word = load %jet.types.word, ptr %stack.top.addr
 
   ; Load swap word
   %swap.idx.i32 = zext i8 %swap.idx to i32
   %stack.swap.idx = sub i32 %stack.ptr.sub_1, %swap.idx.i32
   %stack.swap.addr = getelementptr inbounds %jet.types.exec_ctx, ptr %0, i32 0, i32 5, i32 %stack.swap.idx 
-  %swap_word = load i256, ptr %stack.swap.addr
+  %swap_word = load %jet.types.word, ptr %stack.swap.addr
 
   ; Store words in each other's place
-  store i256 %top_word, ptr %stack.swap.addr
-  store i256 %swap_word, ptr %stack.top.addr
+  store %jet.types.word %top_word, ptr %stack.swap.addr
+  store %jet.types.word %swap_word, ptr %stack.top.addr
 
   ret i1 true
 }
 
-define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
+define i8 @jet.mem.store.word (%jet.types.exec_ctx* %ctx, %jet.types.word* %loc, %jet.types.word* %val) #0 {
 entry:
-  %loc_i32 = trunc i256 %loc to i32
+  %loc_i32 = load i32, ptr %loc
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
   %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
 
-  store i256 %val, ptr %mem_loc_ptr, align 1
+  call void @llvm.memcpy.inline.p0.p0.i64(ptr %mem_loc_ptr, ptr %val, i64 32, i1 false)
 
   ret i8 0
 }
 
-define i8 @jet.mem.store.byte (%jet.types.exec_ctx* %ctx, i256 %loc, i256 %val) #0 {
+define i8 @jet.mem.store.byte (%jet.types.exec_ctx* %ctx, %jet.types.word* %loc, %jet.types.word* %val) #0 {
 entry:
-  %loc_i32 = trunc i256 %loc to i32
-  %val_i8 = trunc i256 %val to i8
+  %loc_i32 = load i32, ptr %loc
+  %val_i8 = load i8, ptr %val
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
   %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
@@ -187,15 +189,14 @@ entry:
   ret i8 0
 }
 
-define i256 @jet.mem.load (%jet.types.exec_ctx* %ctx, i256 %loc) #0 {
+define %jet.types.word* @jet.mem.load (%jet.types.exec_ctx* %ctx, %jet.types.word* %loc) #0 {
 entry:
-  %loc_i32 = trunc i256 %loc to i32
+  %loc_i32 = load i32, ptr %loc
 
   %mem = getelementptr inbounds %jet.types.exec_ctx, ptr %ctx, i32 0, i32 6
   %mem_loc_ptr = getelementptr inbounds %jet.types.mem_buf, ptr %mem, i32 0, i32 %loc_i32
 
-  %val = load i256, ptr %mem_loc_ptr, align 1
-  ret i256 %val
+  ret %jet.types.word* %mem_loc_ptr
 }
 
 ; @jet.contracts.call implements an internal call to another contract.

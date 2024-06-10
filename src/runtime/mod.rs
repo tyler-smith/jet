@@ -18,8 +18,9 @@ pub const GLOBAL_NAME_JIT_ENGINE: &str = "jet.jit_engine";
 // Function names
 pub const FN_NAME_CONTRACT_PREFIX: &str = "jet.contracts.";
 
-pub const FN_NAME_STACK_PUSH_WORD: &str = "jet.stack.push.word";
-pub const FN_NAME_STACK_PUSH_BYTES: &str = "jet.stack.push.bytes";
+pub const FN_NAME_STACK_PUSH_I256: &str = "jet.stack.push.i256";
+pub const FN_NAME_STACK_PUSH_PTR: &str = "jet.stack.push.ptr";
+
 pub const FN_NAME_STACK_POP: &str = "jet.stack.pop";
 pub const FN_NAME_STACK_PEEK: &str = "jet.stack.peek";
 pub const FN_NAME_STACK_SWAP: &str = "jet.stack.swap";

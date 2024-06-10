@@ -29,6 +29,9 @@ pub enum Error {
 
     #[error("invariant violation: {}", .0)]
     InvariantViolation(String),
+
+    #[error("invalid bit-width: {}", .0)]
+    InvalidBitWidth(u32),
 }
 
 impl Error {
