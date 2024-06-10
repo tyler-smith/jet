@@ -30,15 +30,15 @@ impl<'ctx> Manager<'ctx> {
 
         contract::build(&self.build_env, &fn_name, rom)?;
 
+        if self.build_env.opts().emit_llvm() {
+            self.print_ir();
+        }
+
         if self.build_env.opts().assert() {
             if !self.verify_contract(addr) {
                 return Err(Error::Verify);
             }
             self.build_env.module().verify()?;
-        }
-
-        if self.build_env.opts().emit_llvm() {
-            self.print_ir();
         }
         Ok(())
     }
