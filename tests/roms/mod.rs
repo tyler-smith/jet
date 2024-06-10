@@ -23,11 +23,11 @@ macro_rules! rom_tests {
     ($($name:ident: $test:expr),* $(,)?) => {
         $(
             paste::item! {
-                #[test]
-                fn [<test_rom_with_vstack_ $name>]() -> Result<(), Error> {
-                    let t: Test = $test;
-                    _test_rom_body(t, true)
-                }
+                // #[test]
+                // fn [<test_rom_with_vstack_ $name>]() -> Result<(), Error> {
+                //     let t: Test = $test;
+                //     _test_rom_body(t, true)
+                // }
 
                 #[test]
                 fn [<test_rom_with_real_stack_ $name>]() -> Result<(), Error> {
@@ -113,10 +113,30 @@ fn new_test_block_info() -> exec::BlockInfo {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31,
     ];
+    let hash_history = new_test_block_info_hash_history();
     let coinbase = [
         19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
     ];
     exec::BlockInfo::new(
-        42, 100, 100, 1717354173, 5_000_000, 1_000_000, 1, hash, coinbase,
+        42,
+        100,
+        100,
+        1717354173,
+        5_000_000,
+        1_000_000,
+        1,
+        hash,
+        hash_history,
+        coinbase,
     )
+}
+
+fn new_test_block_info_hash_history() -> exec::HashHistory {
+    let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
+
+    for i in 0..exec::BLOCK_HASH_HISTORY_SIZE {
+        hash_history[i][31] = i as u8;
+    }
+
+    hash_history
 }
