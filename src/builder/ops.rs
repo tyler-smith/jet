@@ -517,11 +517,11 @@ pub(crate) fn eq<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
 
 pub(crate) fn iszero<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<(), Error> {
     let a = __stack_pop_1(bctx)?;
-    let a = load_i8(bctx, a)?;
+    let a = load_i256(bctx, a)?;
     let result = bctx.builder.build_int_compare(
         inkwell::IntPredicate::EQ,
         a,
-        bctx.env.types().i8.const_zero(),
+        bctx.env.types().i256.const_zero(),
         "iszero_result",
     )?;
     __stack_push_int(bctx, result)?;
