@@ -104,9 +104,10 @@ fn __stack_push_int<'ctx>(bctx: &BuildCtx<'ctx, '_>, value: IntValue<'ctx>) -> R
 
     let bit_width = value.get_type().get_bit_width();
     let value_i256 = match bit_width {
-        1 | 8 => bctx
-            .builder
-            .build_int_z_extend(value, bctx.env.types().i256, "int_to_word")?,
+        1 | 8 | 32 => {
+            bctx.builder
+                .build_int_z_extend(value, bctx.env.types().i256, "int_to_word")?
+        }
         256 => value,
         _ => {
             return Err(Error::InvalidBitWidth(bit_width));
