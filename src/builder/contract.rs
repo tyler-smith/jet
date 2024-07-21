@@ -6,11 +6,12 @@ use inkwell::{
 };
 use log::{info, trace};
 
+use jet_runtime::ReturnCode;
+
 use crate::{
     builder::{env::Env, Error, ops},
     instructions,
     instructions::{Instruction, IteratorItem},
-    runtime::ReturnCode,
 };
 
 const VSTACK_INIT_SIZE: usize = 32;

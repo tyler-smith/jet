@@ -1,10 +1,9 @@
 use clap::{Parser, Subcommand};
-use inkwell::context::Context;
-use log::info;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::{instructions::Instruction, runtime, runtime::exec};
+use jet::instructions::Instruction;
+use jet_runtime::{BlockInfo, consts::BLOCK_HASH_HISTORY_SIZE, HashHistory};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -59,38 +58,7 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    // let alice_rom = [
-    //     Instruction::PUSH2.opcode(),
-    //     0xFF,
-    //     0x00,
-    //     Instruction::PUSH2.opcode(),
-    //     0x00,
-    //     0xFF,
-    //     Instruction::ADD.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     1,
-    //     Instruction::ADD.opcode(),
-    //     Instruction::DUP1.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     2,
-    //     Instruction::MUL.opcode(),
-    //     Instruction::PC.opcode(),
-    //     // Instruction::BYTE.opcode(),
-    // ];
-
-    let alice_rom = [
-        Instruction::PUSH2.opcode(),
-        0xFF,
-        0x00,
-        Instruction::PUSH2.opcode(),
-        0x00,
-        0xFF,
-        Instruction::ADD.opcode(),
-        Instruction::PUSH1.opcode(),
-        1,
-        Instruction::ADD.opcode(),
-        // Instruction::BYTE.opcode(),
-    ];
+    let alice_rom = [Instruction::PUSH0.opcode(), Instruction::KECCAK256.opcode()];
 
     // let alice_rom = [
     //     Instruction::PUSH1.opcode(), // Output len
@@ -159,17 +127,19 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     // let alice_rom = [Instruction::PC.opcode()];
 
     // Create the LLVM JIT engine
-    let context = Context::create();
+    let context = inkwell::context::Context::create();
     let mut engine = jet::engine::Engine::new(&context, build_opts)?;
 
     // Build the contract
     engine.build_contract("0x1234", alice_rom.as_slice())?;
-    engine.build_contract("0x0001", bob_rom.as_slice())?;
+    // engine.build_contract("0x0001", bob_rom.as_slice())?;
 
     // Run the contract with a test block
     let block_info = new_test_block_info();
     let run = engine.run_contract("0x1234", &block_info)?;
-    info!("{}", run);
+
+    // let wrapped_run = WrappedContractRun::new(&run);
+    // info!("{}", wrapped_run);
 
     Ok(())
 }
@@ -198,7 +168,7 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn new_test_block_info() -> runtime::exec::BlockInfo {
+fn new_test_block_info() -> BlockInfo {
     let hash = [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31,
@@ -208,7 +178,7 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
         19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
     ];
 
-    exec::BlockInfo::new(
+    BlockInfo::new(
         42,
         100,
         100,
@@ -222,10 +192,10 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
     )
 }
 
-fn new_test_block_info_hash_history() -> exec::HashHistory {
-    let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
+fn new_test_block_info_hash_history() -> HashHistory {
+    let mut hash_history = [[0; 32]; BLOCK_HASH_HISTORY_SIZE];
 
-    for i in 0..exec::BLOCK_HASH_HISTORY_SIZE {
+    for i in 0..BLOCK_HASH_HISTORY_SIZE {
         hash_history[i][31] = i as u8;
     }
 

@@ -6,10 +6,9 @@ use syntect::{
     util::{as_24_bit_terminal_escaped, LinesWithEndings},
 };
 
-use crate::{
-    builder::{contract, env::Env, Error},
-    runtime::functions,
-};
+use jet_runtime::functions;
+
+use crate::builder::{contract, env::Env, Error};
 
 pub struct Manager<'ctx> {
     build_env: Env<'ctx>,
@@ -44,7 +43,7 @@ impl<'ctx> Manager<'ctx> {
     }
 
     fn verify_contract(&self, addr: &str) -> bool {
-        let func_name = crate::runtime::functions::mangle_contract_fn(addr);
+        let func_name = functions::mangle_contract_fn(addr);
         let f = self.build_env.module().get_function(&func_name).unwrap();
         f.verify(true)
     }

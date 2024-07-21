@@ -1,26 +1,22 @@
 use inkwell::{
-    context::Context,
     execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
     memory_buffer::MemoryBuffer,
     module::Module,
     OptimizationLevel,
-    support::LLVMString,
+    support::{LLVMString, load_library_permanently, LoadLibraryError},
 };
 use log::{error, info, trace};
 use thiserror::Error;
 
+use jet_runtime::{BlockInfo, Context, ContractFunc, ContractRun, functions};
+
 use crate::{
     builder,
     builder::{env, env::Env, manager::Manager},
-    runtime,
-    runtime::{
-        exec,
-        exec::{BlockInfo, ContractFunc, ContractRun},
-        functions,
-    },
 };
 
 const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
+const RUNTIME_DYLIB_FILE: &str = "target/debug/libjet_runtime.dylib";
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -28,6 +24,7 @@ pub enum Error {
     Build(#[from] builder::Error),
     FunctionLookup(#[from] FunctionLookupError),
     LLVM(#[from] LLVMString),
+    LoadLibraryError(#[from] LoadLibraryError),
 }
 
 pub struct Engine<'ctx> {
@@ -35,8 +32,13 @@ pub struct Engine<'ctx> {
 }
 
 impl<'ctx> Engine<'ctx> {
-    pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, Error> {
+    pub fn new(
+        context: &'ctx inkwell::context::Context,
+        build_opts: env::Options,
+    ) -> Result<Self, Error> {
         let runtime_module = load_runtime_module(context).unwrap();
+        link_in_runtime_dylib()?;
+
         let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);
 
@@ -48,7 +50,7 @@ impl<'ctx> Engine<'ctx> {
         ee: &ExecutionEngine<'ctx>,
         addr: &str,
     ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
-        let name = runtime::functions::mangle_contract_fn(addr);
+        let name = functions::mangle_contract_fn(addr);
         info!("Looking up contract function {}", name);
         unsafe { ee.get_function(name.as_str()) }
     }
@@ -65,7 +67,7 @@ impl<'ctx> Engine<'ctx> {
             .env()
             .module()
             .create_jit_execution_engine(OptimizationLevel::None)?;
-        self.link_in_runtime(&jit);
+        self.link_in_jit_engine(&jit);
 
         // Load and run the contract function
         let contract_exec_fn = match self.get_contract_exec_fn(&jit, addr) {
@@ -76,42 +78,29 @@ impl<'ctx> Engine<'ctx> {
         };
 
         trace!("Running function...");
-        let ctx = exec::Context::new();
+        let ctx = Context::new();
         let result = unsafe {
-            contract_exec_fn.call(&ctx as *const exec::Context, block_info as *const BlockInfo)
+            contract_exec_fn.call(&ctx as *const Context, block_info as *const BlockInfo)
         };
         trace!("Function returned");
 
         Ok(ContractRun::new(result, ctx))
     }
 
-    fn link_in_runtime(&self, ee: &ExecutionEngine) {
-        let symbols = self.build_manager.env().symbols();
-
-        // Link in the JIT engine
+    fn link_in_jit_engine(&self, ee: &ExecutionEngine) {
         let ee_ptr = ee as *const ExecutionEngine as usize;
-        ee.add_global_mapping(&symbols.jit_engine(), ee_ptr);
-
-        // Link in runtime functions
-        ee.add_global_mapping(
-            &symbols.contract_fn_lookup(),
-            functions::jet_contract_fn_lookup as usize,
-        );
-        ee.add_global_mapping(
-            &symbols.new_exec_ctx(),
-            functions::jet_new_main_exec_ctx as usize,
-        );
-        ee.add_global_mapping(
-            &symbols.contract_call_return_data_copy(),
-            functions::jet_contract_call_return_data_copy as usize,
-        );
-        ee.add_global_mapping(&symbols.keccak256(), functions::jet_ops_keccak256 as usize);
+        ee.add_global_mapping(&self.build_manager.env().symbols().jit_engine(), ee_ptr);
     }
 }
 
-fn load_runtime_module(context: &Context) -> Result<Module, Error> {
-    let file_path = std::path::Path::new(RUNTIME_IR_FILE);
-    let ir = MemoryBuffer::create_from_file(file_path)?;
+fn load_runtime_module(context: &inkwell::context::Context) -> Result<Module, Error> {
+    let ir_path = std::path::Path::new(RUNTIME_IR_FILE);
+    let ir = MemoryBuffer::create_from_file(ir_path)?;
     let module = context.create_module_from_ir(ir)?;
     Ok(module)
+}
+
+fn link_in_runtime_dylib() -> Result<(), LoadLibraryError> {
+    let dylib_path = std::path::Path::new(RUNTIME_DYLIB_FILE);
+    load_library_permanently(dylib_path)
 }

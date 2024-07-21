@@ -3,3 +3,5 @@
 /cmake-build-debug
 /dist
 /runtime-ir/*.s
+runtime/target
+runtime/build

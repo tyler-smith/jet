@@ -36,22 +36,22 @@ pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &str = "jet.contracts.call_ret
 
 pub const FN_NAME_KECCAK256: &str = "jet.ops.keccak256";
 
-// Return codes returned by contract function calls.
-// - Negative values are Jet-level failures.
-// - Positive values are successfully captured EVM-returns.
-// - Positive values below 64 are EVM-level successes.
-// - Positive values above 64 are EVM-level failures.
-#[derive(Clone, Debug, PartialEq, Default)]
-#[repr(i8)]
-pub enum ReturnCode {
-    #[default]
-    ImplicitReturn = 0,
-    ExplicitReturn = 1,
-    Stop = 2,
-
-    Revert = 64,
-    Invalid = 65,
-    JumpFailure = 66,
-
-    InvalidJumpBlock = -1,
-}
+// // Return codes returned by contract function calls.
+// // - Negative values are Jet-level failures.
+// // - Positive values are successfully captured EVM-returns.
+// // - Positive values below 64 are EVM-level successes.
+// // - Positive values above 64 are EVM-level failures.
+// #[derive(Clone, Debug, PartialEq, Default)]
+// #[repr(i8)]
+// pub enum ReturnCode {
+//     #[default]
+//     ImplicitReturn = 0,
+//     ExplicitReturn = 1,
+//     Stop = 2,
+//
+//     Revert = 64,
+//     Invalid = 65,
+//     JumpFailure = 66,
+//
+//     InvalidJumpBlock = -1,
+// }
