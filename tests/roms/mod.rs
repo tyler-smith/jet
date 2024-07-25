@@ -39,6 +39,16 @@ macro_rules! rom_tests {
     };
 }
 
+macro_rules! assert_eq_named {
+    ($name:expr, $left:expr, $right:expr) => {
+        assert_eq!(
+            $left, $right,
+            concat!("Checking ", $name, " want={:?}, got={:?}"),
+            $right, $left
+        );
+    };
+}
+
 pub(crate) struct Test {
     pub(crate) roms: Vec<Vec<u8>>,
     pub(crate) expected: TestContractRun,
@@ -60,11 +70,11 @@ impl TestContractRun {
         assert_eq!(run.result(), self.result);
 
         let ctx = run.ctx();
-        assert_eq!(ctx.stack_ptr(), self.stack_ptr);
-        assert_eq!(ctx.jump_ptr(), self.jump_ptr);
-        assert_eq!(ctx.return_off(), self.return_offset);
-        assert_eq!(ctx.return_len(), self.return_length);
-        assert_eq!(ctx.stack_ptr(), self.stack.len() as u32);
+        assert_eq_named!("stack_ptr", ctx.stack_ptr(), self.stack_ptr);
+        assert_eq_named!("jump_ptr", ctx.jump_ptr(), self.jump_ptr);
+        assert_eq_named!("return_off", ctx.return_off(), self.return_offset);
+        assert_eq_named!("return_len", ctx.return_len(), self.return_length);
+        assert_eq_named!("stack_len", ctx.stack_ptr(), self.stack.len() as u32);
 
         let actual_stack = ctx.stack();
         for (i, expected_word) in self.stack.iter().enumerate() {
