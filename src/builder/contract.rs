@@ -66,7 +66,7 @@ pub(crate) struct BuildCtx<'ctx, 'b> {
     pub(crate) env: &'b Env<'ctx>,
     pub(crate) builder: &'b inkwell::builder::Builder<'ctx>,
     pub(crate) registers: Registers<'ctx>,
-    vstack: RefCell<Vec<IntValue<'ctx>>>,
+    _vstack: RefCell<Vec<IntValue<'ctx>>>,
     func: FunctionValue<'ctx>,
 }
 
@@ -80,18 +80,18 @@ impl<'ctx, 'b> BuildCtx<'ctx, 'b> {
         Self {
             env,
             builder,
-            vstack,
+            _vstack: vstack,
             func,
             registers: Registers::new(env, builder, func),
         }
     }
 
-    pub(crate) fn vstack(&self) -> Ref<'_, Vec<IntValue<'ctx>>> {
-        self.vstack.borrow()
+    pub(crate) fn _vstack(&self) -> Ref<'_, Vec<IntValue<'ctx>>> {
+        self._vstack.borrow()
     }
 
-    pub(crate) fn vstack_mut(&self) -> RefMut<'_, Vec<IntValue<'ctx>>> {
-        self.vstack.borrow_mut()
+    pub(crate) fn _vstack_mut(&self) -> RefMut<'_, Vec<IntValue<'ctx>>> {
+        self._vstack.borrow_mut()
     }
 }
 
