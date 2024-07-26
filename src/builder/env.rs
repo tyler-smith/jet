@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use inkwell::{
-    AddressSpace,
     context::Context,
     module::Module,
     values::{FunctionValue, GlobalValue},
+    AddressSpace,
 };
 
 use crate::{runtime, runtime::STACK_SIZE_WORDS};
@@ -146,9 +146,7 @@ impl<'ctx> Types<'ctx> {
         );
 
         // contract func sig: func(ctx: &exec_ctx, block_info: &BlockInfo) i8
-        let contract_fn = context
-            .i8_type()
-            .fn_type(&[ptr.into(), ptr.into()], false);
+        let contract_fn = context.i8_type().fn_type(&[ptr.into(), ptr.into()], false);
 
         Self {
             i8,

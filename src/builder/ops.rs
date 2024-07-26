@@ -263,11 +263,6 @@ fn load_i64<'a>(bctx: &BuildCtx<'a, '_>, ptr: PointerValue<'a>) -> Result<IntVal
     Ok(int)
 }
 
-fn load_i160<'a>(bctx: &BuildCtx<'a, '_>, ptr: PointerValue<'a>) -> Result<IntValue<'a>, Error> {
-    let int = load_int(bctx, ptr, bctx.env.types().i160)?;
-    Ok(int)
-}
-
 fn load_i256<'a>(bctx: &BuildCtx<'a, '_>, ptr: PointerValue<'a>) -> Result<IntValue<'a>, Error> {
     let int = load_int(bctx, ptr, bctx.env.types().i256)?;
     Ok(int)
@@ -793,9 +788,6 @@ pub(crate) fn call(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     )?;
 
     let ret = unsafe { IntValue::new(make_contract_call.as_value_ref()) };
-    // let ret = bctx
-    //     .builder
-    //     .build_int_z_extend(ret, bctx.env.types().word, "call_result")?;
 
     __stack_push_int(bctx, ret)?;
 
@@ -806,7 +798,6 @@ pub(crate) fn _return(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let (offset, size) = __stack_pop_2(bctx)?;
 
     // TODO: Copy instead of load and re-store
-
     let offset = load_i32(bctx, offset)?;
     let size = load_i32(bctx, size)?;
 

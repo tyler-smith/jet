@@ -76,17 +76,27 @@ impl TestContractRun {
         assert_eq_named!("return_len", ctx.return_len(), self.return_length);
         assert_eq_named!("stack_len", ctx.stack_ptr(), self.stack.len() as u32);
 
-        let actual_stack = ctx.stack();
-        for (i, expected_word) in self.stack.iter().enumerate() {
-            let idx = i * 32;
-            let mut actual_word = [0; 32];
-            actual_word[..].copy_from_slice(actual_stack[idx..idx + 32].as_ref());
-            assert_eq!(actual_word, *expected_word);
-        }
+        // let actual_stack = ctx.stack();
+        assert_eq_named!(
+            "stack",
+            &ctx.stack()[..self.stack.len()],
+            self.stack.as_slice()
+        );
+        // for (i, expected_word) in self.stack.iter().enumerate() {
+        //     // let idx = i * 32;
+        //     // let mut actual_word: Word = [0; 32];
+        //     // actual_word[..].copy_from_slice(actual_stack[i]);
+        //     // assert_eq!(actual_stack[i], *expected_word);
+        //     let actual_word = actual_stack[i];
+        //     assert_eq_named!("stack word", actual_word, *expected_word);
+        // }
 
         if let Some(expected_memory) = &self.memory {
-            let actual_memory = &ctx.memory()[..expected_memory.len()];
-            assert_eq!(actual_memory, expected_memory.as_slice());
+            assert_eq_named!(
+                "memory",
+                &ctx.memory()[..expected_memory.len()],
+                expected_memory.as_slice()
+            );
         }
     }
 }
@@ -124,9 +134,7 @@ fn new_test_block_info() -> exec::BlockInfo {
         25, 26, 27, 28, 29, 30, 31,
     ];
     let hash_history = new_test_block_info_hash_history();
-    let coinbase = [
-        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
-    ];
+    let coinbase = [1, 0];
     exec::BlockInfo::new(
         42,
         100,
@@ -144,9 +152,13 @@ fn new_test_block_info() -> exec::BlockInfo {
 fn new_test_block_info_hash_history() -> exec::HashHistory {
     let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
 
-    for i in 0..exec::BLOCK_HASH_HISTORY_SIZE {
-        hash_history[i][31] = i as u8;
-    }
+    hash_history
+        .iter_mut()
+        .enumerate()
+        .take(exec::BLOCK_HASH_HISTORY_SIZE)
+        .for_each(|(i, hash)| {
+            hash[31] = i as u8;
+        });
 
     hash_history
 }
