@@ -20,7 +20,7 @@ use crate::{
     builder::{env, env::Env, manager::Manager},
 };
 
-const RUNTIME_IR_FILE: &str = "../../runtime-ir/jet.ll";
+const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -140,7 +140,15 @@ impl<'ctx> Engine<'ctx> {
 
 fn load_runtime_module(context: &Context) -> Result<Module, Error> {
     let file_path = std::path::Path::new(RUNTIME_IR_FILE);
-    let ir = MemoryBuffer::create_from_file(file_path)?;
-    let module = context.create_module_from_ir(ir)?;
+    let ir = MemoryBuffer::create_from_file(file_path);
+    if let Err(e) = ir {
+        error!(
+            "Failed to load runtime IR file: path={}, error={}",
+            file_path.display(),
+            e
+        );
+        return Err(Error::LLVM(e));
+    }
+    let module = context.create_module_from_ir(ir.unwrap())?;
     Ok(module)
 }
