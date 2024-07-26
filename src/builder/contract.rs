@@ -341,11 +341,8 @@ fn build_contract_body<'ctx, 'b>(
     }
 
     // Add jump table to the end of the function
-    match jump_block {
-        Some(jump_block) => {
-            build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
-        }
-        None => {}
+    if let Some(jump_block) = jump_block {
+        build_jump_table(bctx, jump_block, jump_cases.as_slice())?;
     }
 
     Ok(())
