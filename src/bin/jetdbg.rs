@@ -59,15 +59,35 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    let alice_rom = [
-        Instruction::PUSH0.opcode(),
-        Instruction::KECCAK256.opcode(),
-        Instruction::PUSH1.opcode(),
-        0x01,
-        Instruction::PUSH1.opcode(),
-        0x02,
-        Instruction::ADD.opcode(),
-    ];
+    // let alice_rom = [
+    //     Instruction::PUSH0.opcode(),
+    //     Instruction::KECCAK256.opcode(),
+    //     Instruction::PUSH1.opcode(),
+    //     0x01,
+    //     Instruction::PUSH1.opcode(),
+    //     0x02,
+    //     Instruction::ADD.opcode(),
+    // ];
+
+    // let alice_rom = [
+    //     Instruction::PUSH1.opcode(),
+    //     0xFF,
+    //     Instruction::PUSH1.opcode(),
+    //     0x02,
+    //     Instruction::MSTORE.opcode(),
+    //     Instruction::PUSH1.opcode(),
+    //     0x00,
+    //     Instruction::MLOAD.opcode(),
+    //     Instruction::PUSH2.opcode(),
+    //     0xFF,
+    //     0xFF,
+    //     Instruction::PUSH1.opcode(),
+    //     0x00,
+    //     Instruction::MSTORE8.opcode(),
+    //     Instruction::PUSH1.opcode(),
+    //     0x00,
+    //     Instruction::MLOAD.opcode(),
+    // ];
 
     // let alice_rom = [
     //     Instruction::PUSH2.opcode(),
@@ -102,71 +122,50 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
     //     // Instruction::BYTE.opcode(),
     // ];
 
-    // let alice_rom = [
-    //     Instruction::PUSH1.opcode(), // Output len
-    //     0x0A,
-    //     Instruction::PUSH1.opcode(), // Output offset
-    //     0x00,
-    //     Instruction::PUSH1.opcode(), // Input len
-    //     0x00,
-    //     Instruction::PUSH1.opcode(), // Input offset
-    //     0x00,
-    //     Instruction::PUSH1.opcode(), // Value
-    //     0x00,
-    //     Instruction::PUSH2.opcode(), // Address
-    //     0x00,
-    //     0x01,
-    //     Instruction::PUSH1.opcode(), // Gas
-    //     0x00,
-    //     Instruction::CALL.opcode(), // Mem: 0x00FF
-    //     Instruction::RETURNDATASIZE.opcode(),
-    //     Instruction::PUSH1.opcode(), // Len
-    //     0x02,
-    //     Instruction::PUSH1.opcode(), // Src offset
-    //     0x00,
-    //     Instruction::PUSH1.opcode(), // Dest offset
-    //     0x02,
-    //     Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
-    // ];
+    let alice_rom = [
+        Instruction::PUSH1.opcode(), // Output len
+        0x0A,
+        Instruction::PUSH1.opcode(), // Output offset
+        0x00,
+        Instruction::PUSH1.opcode(), // Input len
+        0x00,
+        Instruction::PUSH1.opcode(), // Input offset
+        0x00,
+        Instruction::PUSH1.opcode(), // Value
+        0x00,
+        Instruction::PUSH2.opcode(), // Address
+        0x00,
+        0x01,
+        Instruction::PUSH1.opcode(), // Gas
+        0x00,
+        Instruction::CALL.opcode(), // Mem: 0x00FF
+        Instruction::RETURNDATASIZE.opcode(),
+        Instruction::PUSH1.opcode(), // Len
+        0x02,
+        Instruction::PUSH1.opcode(), // Src offset
+        0x00,
+        Instruction::PUSH1.opcode(), // Dest offset
+        0x02,
+        Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
+    ];
 
-    // let bob_rom = [
-    //     Instruction::PUSH1.opcode(),
-    //     0xFF,
-    //     Instruction::PUSH1.opcode(),
-    //     0x01,
-    //     Instruction::MSTORE.opcode(), // Mem: 0x00FF
-    //     Instruction::PUSH1.opcode(),
-    //     0xFF,
-    //     Instruction::PUSH1.opcode(),
-    //     0x0A,
-    //     Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
-    //     Instruction::PUSH1.opcode(),
-    //     0x0A,
-    //     Instruction::PUSH1.opcode(),
-    //     0x00,
-    //     Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
-    // ];
-
-    // let alice_rom = [
-    //     Instruction::BLOCKHASH.opcode(),
-    //     // Instruction::PUSH1.opcode(),
-    //     // 0x01,
-    //     // Instruction::PUSH1.opcode(),
-    //     // 0x02,
-    //     // Instruction::PUSH1.opcode(),
-    //     // 0x03,
-    //     // Instruction::PUSH1.opcode(),
-    //     // 0x04,
-    //     // Instruction::PUSH1.opcode(),
-    //     // 0x05,
-    //     // Instruction::DUP1.opcode(),
-    //     // Instruction::DUP3.opcode(),
-    //     // Instruction::DUP5.opcode(),
-    //     // Instruction::DUP7.opcode(),
-    //     // Instruction::DUP9.opcode(),
-    // ];
-
-    // let alice_rom = [Instruction::PC.opcode()];
+    let bob_rom = [
+        Instruction::PUSH1.opcode(),
+        0xFF,
+        Instruction::PUSH1.opcode(),
+        0x01,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF
+        Instruction::PUSH1.opcode(),
+        0xFF,
+        Instruction::PUSH1.opcode(),
+        0x0A,
+        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
+        Instruction::PUSH1.opcode(),
+        0x0A,
+        Instruction::PUSH1.opcode(),
+        0x00,
+        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
+    ];
 
     // Create the LLVM JIT engine
     let context = Context::create();
@@ -174,7 +173,7 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
 
     // Build the contract
     engine.build_contract("0x1234", alice_rom.as_slice())?;
-    // engine.build_contract("0x0001", bob_rom.as_slice())?;
+    engine.build_contract("0x0001", bob_rom.as_slice())?;
 
     // Run the contract with a test block
     let block_info = new_test_block_info();
@@ -214,9 +213,7 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
         25, 26, 27, 28, 29, 30, 31,
     ];
     let hash_history = new_test_block_info_hash_history();
-    let coinbase = [
-        19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
-    ];
+    let coinbase = [1, 0];
 
     exec::BlockInfo::new(
         42,
@@ -233,11 +230,15 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
 }
 
 fn new_test_block_info_hash_history() -> exec::HashHistory {
-    let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
+    let mut hash_history = [[0; 32]; runtime::BLOCK_HASH_HISTORY_SIZE];
 
-    for i in 0..exec::BLOCK_HASH_HISTORY_SIZE {
-        hash_history[i][31] = i as u8;
-    }
+    hash_history
+        .iter_mut()
+        .enumerate()
+        .take(runtime::BLOCK_HASH_HISTORY_SIZE)
+        .for_each(|(i, hash)| {
+            hash[31] = i as u8;
+        });
 
     hash_history
 }
