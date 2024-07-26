@@ -148,7 +148,7 @@ impl<'ctx> Types<'ctx> {
         // contract func sig: func(ctx: &exec_ctx, block_info: &BlockInfo) i8
         let contract_fn = context
             .i8_type()
-            .fn_type(&vec![ptr.into(), ptr.into()], false);
+            .fn_type(&[ptr.into(), ptr.into()], false);
 
         Self {
             i8,
