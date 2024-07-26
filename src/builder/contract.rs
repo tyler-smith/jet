@@ -164,7 +164,7 @@ impl<'ctx, 'b> CodeBlocks<'ctx, 'b> {
     }
 }
 
-pub fn build<'ctx, 'b>(env: &'b Env<'ctx>, name: &str, rom: &[u8]) -> Result<(), Error> {
+pub fn build(env: &'_ Env<'_>, name: &str, rom: &[u8]) -> Result<(), Error> {
     let builder = env.context().create_builder();
 
     // Declare the function in the module
@@ -348,8 +348,8 @@ fn build_contract_body<'ctx, 'b>(
     Ok(())
 }
 
-fn build_code_block<'ctx, 'b>(
-    bctx: &BuildCtx<'ctx, 'b>,
+fn build_code_block(
+    bctx: &BuildCtx<'_, '_>,
     code_block: &CodeBlock,
     jump_block: Option<BasicBlock>,
     following_block: Option<&&CodeBlock>,
