@@ -1,4 +1,4 @@
-use crate::runtime::*;
+use crate::*;
 
 pub type Word = [u8; 32];
 pub type Hash = [u8; 32];

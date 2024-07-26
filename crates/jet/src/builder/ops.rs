@@ -5,10 +5,11 @@ use inkwell::{
     values::{AsValueRef, CallSiteValue, IntValue, PointerValue},
 };
 
+use jet_runtime::ReturnCode;
+
 use crate::{
     builder::{contract::BuildCtx, Error},
     instructions::Instruction,
-    runtime::ReturnCode,
 };
 
 type StackPop1<'ctx> = PointerValue<'ctx>;

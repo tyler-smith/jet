@@ -4,7 +4,8 @@ use log::info;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::{instructions::Instruction, runtime, runtime::exec};
+use jet::instructions::Instruction;
+use jet_runtime::{self, exec};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -207,7 +208,7 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn new_test_block_info() -> runtime::exec::BlockInfo {
+fn new_test_block_info() -> exec::BlockInfo {
     let hash = [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
         25, 26, 27, 28, 29, 30, 31,
@@ -230,12 +231,12 @@ fn new_test_block_info() -> runtime::exec::BlockInfo {
 }
 
 fn new_test_block_info_hash_history() -> exec::HashHistory {
-    let mut hash_history = [[0; 32]; runtime::BLOCK_HASH_HISTORY_SIZE];
+    let mut hash_history = [[0; 32]; jet_runtime::BLOCK_HASH_HISTORY_SIZE];
 
     hash_history
         .iter_mut()
         .enumerate()
-        .take(runtime::BLOCK_HASH_HISTORY_SIZE)
+        .take(jet_runtime::BLOCK_HASH_HISTORY_SIZE)
         .for_each(|(i, hash)| {
             hash[31] = i as u8;
         });

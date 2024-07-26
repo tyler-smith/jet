@@ -1,47 +1,76 @@
 use inkwell::execution_engine::ExecutionEngine;
 use log::{error, trace};
 
-use crate::runtime::{
+use crate::{
     ADDRESS_SIZE_BYTES,
     exec::{Context, Word}, FN_NAME_CONTRACT_PREFIX, WORD_SIZE_BYTES,
 };
+
+type ContractFunc = unsafe extern "C" fn(*mut Context) -> i8;
 
 pub fn mangle_contract_fn(address: &str) -> String {
     format!("{}{}", FN_NAME_CONTRACT_PREFIX, address)
 }
 
-// Core
+//  Core
 //
 
-// TODO: This can probably be put directly into the contract_call function
-// and no longer needed as an exposed runtime function
-pub extern "C" fn jet_new_main_exec_ctx() -> usize {
-    let ctx = Context::new();
-    Box::into_raw(Box::new(ctx)) as usize
-}
-
-pub extern "C" fn jet_stack_push_ptr(ctx: *mut Context, word_ptr: *const Word) -> bool {
+///  Pushes a word onto the stack.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointers. The caller must ensure that
+///  all the pointers are valid.
+pub unsafe extern "C" fn jet_stack_push_ptr(ctx: *mut Context, word_ptr: *const Word) -> bool {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
     let word = unsafe { *word_ptr };
     ctx.stack_push(word)
 }
 
-pub extern "C" fn jet_stack_pop(ctx: *mut Context) -> *const Word {
+///  Pops a word from the stack.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointer. The caller must ensure that
+///  the pointer is valid.
+pub unsafe extern "C" fn jet_stack_pop(ctx: *mut Context) -> *const Word {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
     ctx.stack_pop() as *const Word
 }
 
-pub extern "C" fn jet_stack_peek(ctx: *const Context, peek_idx: u8) -> *const Word {
+///  Peeks at a word in the stack.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointer. The caller must ensure that
+///  the pointer is valid.
+pub unsafe extern "C" fn jet_stack_peek(ctx: *const Context, peek_idx: u8) -> *const Word {
     let ctx = unsafe { ctx.as_ref() }.unwrap();
     ctx.stack_peek(peek_idx as u32) as *const Word
 }
 
-pub extern "C" fn jet_stack_swap(ctx: *mut Context, swap_idx: u8) -> bool {
+///  Swaps two words in the stack.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointer. The caller must ensure that
+///  the pointer is valid.
+pub unsafe extern "C" fn jet_stack_swap(ctx: *mut Context, swap_idx: u8) -> bool {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
     ctx.stack_swap(swap_idx as u32)
 }
 
-pub extern "C" fn jet_mem_store_word(ctx: *mut Context, loc: *const u32, val: *const Word) -> i8 {
+///  Stores a word in memory.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointers. The caller must ensure that
+///  all the pointers are valid.
+pub unsafe extern "C" fn jet_mem_store_word(
+    ctx: *mut Context,
+    loc: *const u32,
+    val: *const Word,
+) -> i8 {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
     let loc = unsafe { *loc };
     let word_ref = unsafe { &*val };
@@ -57,7 +86,17 @@ pub extern "C" fn jet_mem_store_word(ctx: *mut Context, loc: *const u32, val: *c
     0
 }
 
-pub extern "C" fn jet_mem_store_byte(ctx: *mut Context, loc: *const u32, val: *const u8) -> i8 {
+///  Stores a byte in memory.
+///
+///  # Safety
+///
+///  This function is unsafe because it dereferences the given pointers. The caller must ensure that
+///  all the pointers are valid.
+pub unsafe extern "C" fn jet_mem_store_byte(
+    ctx: *mut Context,
+    loc: *const u32,
+    val: *const u8,
+) -> i8 {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
     let loc = unsafe { *loc };
     let byte = unsafe { *val };
@@ -70,7 +109,13 @@ pub extern "C" fn jet_mem_store_byte(ctx: *mut Context, loc: *const u32, val: *c
     0
 }
 
-pub extern "C" fn jet_mem_load(ctx: *const Context, loc: *const u32) -> *const Word {
+/// Loads a word from memory.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences the given pointer. The caller must ensure that
+/// the pointer is valid.
+pub unsafe extern "C" fn jet_mem_load(ctx: *const Context, loc: *const u32) -> *const Word {
     let ctx = unsafe { ctx.as_ref() }.unwrap();
     let loc = unsafe { *loc };
 
@@ -88,10 +133,24 @@ pub extern "C" fn jet_mem_load(ctx: *const Context, loc: *const u32) -> *const W
 // Contract calls
 //
 
-type ContractFunc = unsafe extern "C" fn(*mut Context) -> i8;
+// TODO: This can probably be put directly into the contract_call function
+// and no longer needed as an exposed runtime function
+pub extern "C" fn jet_new_main_exec_ctx() -> usize {
+    let ctx = Context::new();
+    Box::into_raw(Box::new(ctx)) as usize
+}
 
+/// Finds the pointer to the compiled contract function for the given address.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences the given pointers, and writes the function
+/// pointer to the given `out` pointer. The caller must ensure that all the pointers are valid.
+///
+/// TODO: This can probably be put directly into the contract_call function
+/// and no longer needed as an exposed runtime function
 #[allow(improper_ctypes_definitions)]
-pub extern "C" fn jet_contract_fn_lookup(
+pub unsafe extern "C" fn jet_contract_fn_lookup(
     jit_engine: *const ExecutionEngine,
     out: *mut usize,
     addr_slice: &[u8],
@@ -119,7 +178,13 @@ pub extern "C" fn jet_contract_fn_lookup(
     0
 }
 
-pub extern "C" fn jet_contract_call(
+/// Calls the contract at the given address.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences the given pointers. The caller must ensure that
+/// all the pointers are valid.
+pub unsafe extern "C" fn jet_contract_call(
     jit_engine: *const ExecutionEngine,
     ctx: *mut Context,
     callee_ctx: *mut Context,
@@ -160,7 +225,13 @@ pub extern "C" fn jet_contract_call(
     copy_ret as i8
 }
 
-pub extern "C" fn jet_contract_call_return_data_copy(
+/// Copies return data from the sub context to the parent context.
+///
+/// # Safety
+///
+/// This function is unsafe because it dereferences the given pointers. The caller must ensure
+/// that all the pointers are valid.
+pub unsafe extern "C" fn jet_contract_call_return_data_copy(
     ctx: *mut Context,
     sub_ctx: *const Context,
     dest_offset: u32,
@@ -198,7 +269,7 @@ pub extern "C" fn jet_contract_call_return_data_copy(
     0
 }
 
-// Utils
+//  Utils
 //
 
 pub extern "C" fn jet_ops_keccak256(buffer: &mut [u8; 32]) -> u8 {

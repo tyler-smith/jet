@@ -1,13 +1,10 @@
 export LLVM_SYS_180_PREFIX=/usr/local/opt/llvm
 export RUST_BACKTRACE=1
 
-.PHONY: format
-format: ## Format the code
-	rustfmt src/**/*.rs
-
 .PHONY: commit-check
-commit-check: format ## Full check to run before commits
+commit-check: ## Full check to run before commits
 	cargo check
+	cargo nextest run
 	cargo clippy --all-targets --all-features -- -D warnings
 
 .DEFAULT_GOAL := help

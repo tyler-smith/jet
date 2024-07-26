@@ -9,18 +9,18 @@ use inkwell::{
 use log::{error, info, trace};
 use thiserror::Error;
 
+use jet_runtime::{
+    self, exec,
+    exec::{BlockInfo, ContractFunc, ContractRun},
+    functions,
+};
+
 use crate::{
     builder,
     builder::{env, env::Env, manager::Manager},
-    runtime,
-    runtime::{
-        exec,
-        exec::{BlockInfo, ContractFunc, ContractRun},
-        functions,
-    },
 };
 
-const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
+const RUNTIME_IR_FILE: &str = "../../runtime-ir/jet.ll";
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -48,7 +48,7 @@ impl<'ctx> Engine<'ctx> {
         ee: &ExecutionEngine<'ctx>,
         addr: &str,
     ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
-        let name = runtime::functions::mangle_contract_fn(addr);
+        let name = functions::mangle_contract_fn(addr);
         info!("Looking up contract function {}", name);
         unsafe { ee.get_function(name.as_str()) }
     }

@@ -7,7 +7,7 @@ use inkwell::{
     values::{FunctionValue, GlobalValue},
 };
 
-use crate::{runtime, runtime::STACK_SIZE_WORDS};
+use jet_runtime;
 
 const PACK_STRUCTS: bool = true;
 
@@ -105,7 +105,7 @@ impl<'ctx> Types<'ctx> {
         let word_bytes = i8.array_type(32);
 
         // Architecture
-        let stack = i256.array_type(STACK_SIZE_WORDS);
+        let stack = i256.array_type(jet_runtime::STACK_SIZE_WORDS);
 
         let mem_len = context.i32_type();
         let mem_cap = context.i32_type();
@@ -199,27 +199,27 @@ pub(crate) struct Symbols<'ctx> {
 
 impl<'ctx> Symbols<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
-        let jit_engine = module.get_global(runtime::GLOBAL_NAME_JIT_ENGINE)?;
+        let jit_engine = module.get_global(jet_runtime::GLOBAL_NAME_JIT_ENGINE)?;
 
-        let new_exec_ctx = module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
+        let new_exec_ctx = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
 
-        let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
-        let stack_push_ptr = module.get_function(runtime::FN_NAME_STACK_PUSH_PTR)?;
+        let stack_push_word = module.get_function(jet_runtime::FN_NAME_STACK_PUSH_WORD)?;
+        let stack_push_ptr = module.get_function(jet_runtime::FN_NAME_STACK_PUSH_PTR)?;
 
-        let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP)?;
-        let stack_peek_word = module.get_function(runtime::FN_NAME_STACK_PEEK)?;
-        let stack_swap_words = module.get_function(runtime::FN_NAME_STACK_SWAP)?;
+        let stack_pop_word = module.get_function(jet_runtime::FN_NAME_STACK_POP)?;
+        let stack_peek_word = module.get_function(jet_runtime::FN_NAME_STACK_PEEK)?;
+        let stack_swap_words = module.get_function(jet_runtime::FN_NAME_STACK_SWAP)?;
 
-        let memory_store_word = module.get_function(runtime::FN_NAME_MEM_STORE_WORD)?;
-        let memory_store_byte = module.get_function(runtime::FN_NAME_MEM_STORE_BYTE)?;
-        let memory_load_word = module.get_function(runtime::FN_NAME_MEM_LOAD)?;
+        let memory_store_word = module.get_function(jet_runtime::FN_NAME_MEM_STORE_WORD)?;
+        let memory_store_byte = module.get_function(jet_runtime::FN_NAME_MEM_STORE_BYTE)?;
+        let memory_load_word = module.get_function(jet_runtime::FN_NAME_MEM_LOAD)?;
 
-        let contract_fn_lookup = module.get_function(runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
-        let contract_call = module.get_function(runtime::FN_NAME_CONTRACT_CALL)?;
+        let contract_fn_lookup = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
+        let contract_call = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL)?;
         let contract_call_return_data_copy =
-            module.get_function(runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
+            module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
 
-        let keccak256 = module.get_function(runtime::FN_NAME_KECCAK256)?;
+        let keccak256 = module.get_function(jet_runtime::FN_NAME_KECCAK256)?;
 
         Some(Self {
             jit_engine,

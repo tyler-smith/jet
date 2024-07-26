@@ -1,5 +1,6 @@
+pub mod binding;
 pub mod exec;
-pub(crate) mod functions;
+pub mod functions;
 
 // System architecture; These are defined by the EVM
 pub const WORD_SIZE_BITS: u32 = 256;

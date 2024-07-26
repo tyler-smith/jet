@@ -1,4 +1,5 @@
-use jet::{instructions::Instruction, runtime::ReturnCode};
+use jet::instructions::Instruction;
+use jet_runtime::ReturnCode;
 use roms::*;
 
 mod roms;
