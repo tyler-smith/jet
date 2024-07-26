@@ -18,7 +18,7 @@ pub const GLOBAL_NAME_JIT_ENGINE: &str = "jet.jit_engine";
 // Function names
 pub const FN_NAME_CONTRACT_PREFIX: &str = "jet.contracts.";
 
-pub const FN_NAME_STACK_PUSH_I256: &str = "jet.stack.push.i256";
+pub const FN_NAME_STACK_PUSH_WORD: &str = "jet.stack.push.i256";
 pub const FN_NAME_STACK_PUSH_PTR: &str = "jet.stack.push.ptr";
 
 pub const FN_NAME_STACK_POP: &str = "jet.stack.pop";
@@ -31,10 +31,12 @@ pub const FN_NAME_MEM_LOAD: &str = "jet.mem.load";
 
 pub const FN_NAME_CONTRACT_CALL_NEW_SUB_CTX: &str = "jet.contracts.new_sub_ctx";
 pub const FN_NAME_CONTRACT_CALL_LOOKUP: &str = "jet.contracts.lookup";
-pub const FN_NAME_CONTRACT_CALL: &str = "jet.contracts.call";
+pub const FN_NAME_CONTRACT_CALL: &str = "jet.contract.call";
 pub const FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY: &str = "jet.contracts.call_return_data_copy";
 
 pub const FN_NAME_KECCAK256: &str = "jet.ops.keccak256";
+
+pub const BLOCK_HASH_HISTORY_SIZE: usize = 256;
 
 // Return codes returned by contract function calls.
 // - Negative values are Jet-level failures.

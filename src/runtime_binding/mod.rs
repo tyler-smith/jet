@@ -2,7 +2,7 @@ use std::fmt;
 
 use colored::Colorize;
 
-use crate::runtime::exec;
+use crate::runtime::{exec, ADDRESS_SIZE_BYTES};
 
 impl fmt::Display for exec::BlockInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -17,7 +17,7 @@ impl fmt::Display for exec::BlockInfo {
             self.blob_base_fee(),
             self.chain_id(),
             self.hash().iter().take(32).fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x)),
-            self.coinbase().iter().take(20).fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
+            self.coinbase().iter().take(ADDRESS_SIZE_BYTES).fold(String::new(), |acc, x| acc.clone() + &format!("{:02X}", x))
         )
     }
 }
@@ -55,38 +55,14 @@ impl fmt::Display for exec::Context {
         let stack_size = self.stack_ptr() as usize;
 
         // Print out each 32 byte word, starting from the top of the stack and working down
+        // for word_i in (stack_size - 1)..=0 {
         for i in 0..stack_size {
-            let word_idx = stack_size - i - 1;
-            let offset = (32 * word_idx) as usize;
-            let end = offset + 32;
-
-            let byte_formatter = |acc: (String, bool), x: &u8| {
-                let has_been_significant = acc.1;
-                let is_significant = has_been_significant || *x != 0;
-
-                let mut byte_str = format!("{:02X}", x);
-
-                if is_significant {
-                    byte_str = if !has_been_significant && x < &16 {
-                        let chars = byte_str.chars();
-                        format!(
-                            "{}{}",
-                            chars.clone().nth(0).unwrap().to_string(),
-                            chars.clone().nth(1).unwrap().to_string().blue()
-                        )
-                    } else {
-                        byte_str.blue().to_string()
-                    };
-                }
-
-                (acc.0.clone() + &byte_str, is_significant)
-            };
-
+            let word_i = stack_size - i - 1;
             writeln!(
                 f,
                 "  {}: {}",
-                word_idx + 1,
-                stack[offset..end]
+                word_i,
+                stack[word_i]
                     .iter()
                     .take(32)
                     .rev()
@@ -106,6 +82,28 @@ impl fmt::Display for exec::Context {
 
         Ok(())
     }
+}
+
+fn byte_formatter(acc: (String, bool), x: &u8) -> (String, bool) {
+    let has_been_significant = acc.1;
+    let is_significant = has_been_significant || *x != 0;
+
+    let mut byte_str = format!("{:02X}", x);
+
+    if is_significant {
+        byte_str = if !has_been_significant && x < &16 {
+            let chars = byte_str.chars();
+            format!(
+                "{}{}",
+                chars.clone().next().unwrap(),
+                chars.clone().nth(1).unwrap().to_string().blue()
+            )
+        } else {
+            byte_str.blue().to_string()
+        };
+    }
+
+    (acc.0.clone() + &byte_str, is_significant)
 }
 
 impl fmt::Display for exec::ContractRun {

@@ -93,10 +93,39 @@ impl<'ctx> Engine<'ctx> {
         ee.add_global_mapping(&symbols.jit_engine(), ee_ptr);
 
         // Link in runtime functions
+        // TODO: Find a way to ensure everything is set here at compile time
+
+        // ee.add_global_mapping(
+        //     &symbols.stack_push_word(),
+        //     functions::jet_stack_push_word as usize,
+        // );
+        ee.add_global_mapping(
+            &symbols.stack_push_ptr(),
+            functions::jet_stack_push_ptr as usize,
+        );
+        ee.add_global_mapping(&symbols.stack_pop_word(), functions::jet_stack_pop as usize);
+        ee.add_global_mapping(
+            &symbols.stack_peek_word(),
+            functions::jet_stack_peek as usize,
+        );
+        ee.add_global_mapping(
+            &symbols.stack_swap_words(),
+            functions::jet_stack_swap as usize,
+        );
+
+        ee.add_global_mapping(&symbols.mstore(), functions::jet_mem_store_word as usize);
+        ee.add_global_mapping(&symbols.mstore8(), functions::jet_mem_store_byte as usize);
+        ee.add_global_mapping(&symbols.mload(), functions::jet_mem_load as usize);
+
         ee.add_global_mapping(
             &symbols.contract_fn_lookup(),
             functions::jet_contract_fn_lookup as usize,
         );
+        ee.add_global_mapping(
+            &symbols.contract_call(),
+            functions::jet_contract_call as usize,
+        );
+
         ee.add_global_mapping(
             &symbols.new_exec_ctx(),
             functions::jet_new_main_exec_ctx as usize,

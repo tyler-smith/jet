@@ -763,10 +763,6 @@ pub(crate) fn pc(bctx: &BuildCtx<'_, '_>, pc: usize) -> Result<(), Error> {
 pub(crate) fn call(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx)?;
 
-    let to = load_i160(bctx, to)?;
-    let out_off = load_i32(bctx, out_off)?;
-    let out_len = load_i32(bctx, out_len)?;
-
     // Create sub call context
     let call_ctx = bctx
         .builder
@@ -775,9 +771,12 @@ pub(crate) fn call(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
 
     // Call the contract with the call context
     let contract_call_fn = bctx.env.symbols().contract_call();
+    let jit_engine = bctx.env.symbols().jit_engine();
+    let jit_engine_ptr = jit_engine.as_pointer_value();
     let make_contract_call = bctx.builder.build_call(
         contract_call_fn,
         &[
+            jit_engine_ptr.into(),
             bctx.registers.exec_ctx.into(),
             call_ctx_ptr.into(),
             to.into(),

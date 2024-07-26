@@ -7,6 +7,7 @@ use jet::{
     builder::env::{Mode::Debug, Options},
     engine,
     engine::Engine,
+    runtime,
     runtime::{exec, ReturnCode},
 };
 
@@ -150,12 +151,12 @@ fn new_test_block_info() -> exec::BlockInfo {
 }
 
 fn new_test_block_info_hash_history() -> exec::HashHistory {
-    let mut hash_history = [[0; 32]; exec::BLOCK_HASH_HISTORY_SIZE];
+    let mut hash_history = [[0; 32]; runtime::BLOCK_HASH_HISTORY_SIZE];
 
     hash_history
         .iter_mut()
         .enumerate()
-        .take(exec::BLOCK_HASH_HISTORY_SIZE)
+        .take(runtime::BLOCK_HASH_HISTORY_SIZE)
         .for_each(|(i, hash)| {
             hash[31] = i as u8;
         });
