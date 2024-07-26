@@ -32,7 +32,7 @@ fn __call_stack_push_i256<'ctx>(
     value: IntValue<'ctx>,
 ) -> Result<CallSiteValue<'ctx>, BuilderError> {
     bctx.builder.build_call(
-        bctx.env.symbols().stack_push_i256(),
+        bctx.env.symbols().stack_push_word(),
         &[bctx.registers.exec_ctx.into(), value.into()],
         "stack_push_i256",
     )

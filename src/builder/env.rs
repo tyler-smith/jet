@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use inkwell::{
+    AddressSpace,
     context::Context,
     module::Module,
     values::{FunctionValue, GlobalValue},
-    AddressSpace,
 };
 
 use crate::{runtime, runtime::STACK_SIZE_WORDS};
@@ -179,8 +179,7 @@ pub(crate) struct Symbols<'ctx> {
     jit_engine: GlobalValue<'ctx>,
 
     new_exec_ctx: FunctionValue<'ctx>,
-
-    stack_push_i256: FunctionValue<'ctx>,
+    stack_push_word: FunctionValue<'ctx>,
     stack_push_ptr: FunctionValue<'ctx>,
 
     stack_pop_word: FunctionValue<'ctx>,
@@ -204,7 +203,7 @@ impl<'ctx> Symbols<'ctx> {
 
         let new_exec_ctx = module.get_function(runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
 
-        let stack_push_i256 = module.get_function(runtime::FN_NAME_STACK_PUSH_I256)?;
+        let stack_push_word = module.get_function(runtime::FN_NAME_STACK_PUSH_WORD)?;
         let stack_push_ptr = module.get_function(runtime::FN_NAME_STACK_PUSH_PTR)?;
 
         let stack_pop_word = module.get_function(runtime::FN_NAME_STACK_POP)?;
@@ -226,9 +225,8 @@ impl<'ctx> Symbols<'ctx> {
             jit_engine,
 
             new_exec_ctx,
-
             stack_push_ptr,
-            stack_push_i256,
+            stack_push_word,
 
             stack_pop_word,
             stack_peek_word,
@@ -258,8 +256,8 @@ impl<'ctx> Symbols<'ctx> {
         self.stack_push_ptr
     }
 
-    pub(crate) fn stack_push_i256(&self) -> FunctionValue<'ctx> {
-        self.stack_push_i256
+    pub(crate) fn stack_push_word(&self) -> FunctionValue<'ctx> {
+        self.stack_push_word
     }
 
     pub(crate) fn stack_pop_word(&self) -> FunctionValue<'ctx> {
