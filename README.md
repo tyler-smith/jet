@@ -29,11 +29,11 @@ To build and run Jet, you'll need the following:
 
 2. Install LLVM 18.0:
     - On macOS (using Homebrew):
-      ```
+      ```shell
       brew install llvm@18
       ```
     - On Ubuntu:
-      ```
+      ```shell
       wget https://apt.llvm.org/llvm.sh
       chmod +x llvm.sh
       sudo ./llvm.sh 18
@@ -41,7 +41,7 @@ To build and run Jet, you'll need the following:
 
 3. Clone the Jet repository:
     ```shell
-    git clone https://github.com/your-username/jet.git
+    git clone https://github.com/tyler-smith/jet.git
     cd jet
     ```
 
@@ -63,6 +63,58 @@ The `jetdbg` command allows you to debug and execute EVM contracts using Jet. To
 ```shell
 cargo run --bin jetdbg
 ```
+
+## Project Status
+
+Jet is currently in active development. While significant progress has been made in implementing core EVM functionality,
+the project is not yet feature-complete. Below is an overview of the current status:
+
+### Implemented Features
+
+1. **Core Architecture**
+    - LLVM-based JIT compilation of EVM bytecode
+    - Basic execution context management
+    - Stack and memory operations
+
+2. **Opcode Classes**
+    - Arithmetic Operations
+    - Comparison & Bitwise Logic
+    - Stack Operations
+    - Memory Operations
+    - Control Flow
+    - KECCAK256
+
+3. **Environmental Information**
+    - Basic block information handling
+
+4. **Contract Interaction**
+    - Simple contract calls `CALL, RETURNDATASIZE, RETURNDATACOPY`
+
+### Upcoming Features
+
+1. **Opcode Classes**
+    - Storage Operations: `SLOAD, SSTORE`
+    - Memory Expansion: `MSIZE`
+    - Stack Operations: `TLOAD, TSTORE, MCOPY`
+    - Calls: `DELEGATECALL, STATICCALL, CALLCODE`
+    - Logs: `LOG0, LOG1, LOG2, LOG3, LOG4`
+    - Contract Management: `CREATE, CREATE2, SELFDESTRUCT`
+    - Block Information: `BLOCKHASH, COINBASE, TIMESTAMP, NUMBER, DIFFICULTY, GASLIMIT, CHAINID, SELFBALANCE, BASEFEE,
+      BLOBHASH, BLOBBASEFEE`
+    - Environmental Information: `ADDRESS, BALANCE, ORIGIN, CALLER, CALLVALUE, CALLDATALOAD, CALLDATASIZE, CALLDATACOPY,
+      CODESIZE, CODECOPY, GAS, GASPRICE, EXTCODESIZE, EXTCODECOPY, RETURNDATASIZE, RETURNDATACOPY, EXTCODEHASH`
+
+2. **Testing and Validation**
+    - Comprehensive test suite covering all EVM operations
+    - Validation against existing EVM implementations
+
+3. **Documentation and Usability**
+    - Detailed documentation of the Jet architecture
+    - User guides for integrating Jet into existing systems
+
+4. **Performance Optimizations**
+    - Improved memory management
+    - Optimization of frequently used operation sequences
 
 ## License
 
