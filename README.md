@@ -56,7 +56,41 @@ To build and run Jet, you'll need the following:
     make build
     ```
 
-### Running jetdbg
+### Using jetc - The Jet Compiler
+
+`jetc` is a command-line tool for compiling Ethereum Virtual Machine (EVM) bytecode to LLVM IR using the Jet compiler.
+
+#### Usage
+
+```shell
+jetc [OPTIONS] <INPUT>
+
+### Arguments
+
+- `<INPUT>`: Required. This can be either a file path containing EVM bytecode or a hex string of the bytecode itself.
+
+### Options
+
+- `-o, --output <FILE>`: Specifies the output file. If not provided, the result is written to stdout.
+- `-a, --address <ADDRESS>`: Sets the address to assign to the contract. Defaults to "0x1234".
+```
+
+#### Examples
+
+Output LLVM IR
+
+```shell
+jetc input.evm
+jetc 60806040
+```
+
+Build to ASM
+
+```shell
+jetc 60806040 | llc
+```
+
+### Using jetdbg - The Jet Debugger
 
 The `jetdbg` command allows you to debug and execute EVM contracts using Jet. To run it:
 
