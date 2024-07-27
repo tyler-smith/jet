@@ -3,10 +3,9 @@ use log::error;
 
 use crate::{*, symbols::FN_CONTRACT_PREFIX};
 
-pub type Word = [u8; 32];
-pub type Hash = [u8; 32];
-type Address = [u8; ADDRESS_SIZE_BYTES];
-pub type HashHistory = [Hash; BLOCK_HASH_HISTORY_SIZE];
+pub type Word = [u8; WORD_SIZE_BYTES as usize];
+pub type Address = [u8; ADDRESS_SIZE_BYTES];
+pub type HashHistory = [Word; BLOCK_HASH_HISTORY_SIZE];
 
 pub type ContractFunc = unsafe extern "C" fn(*const Context) -> ReturnCode;
 
@@ -179,7 +178,7 @@ pub struct BlockInfo {
     base_fee: u64,
     blob_base_fee: u64,
     chain_id: u64,
-    hash: Hash,
+    hash: Word,
     hash_history: HashHistory,
     coinbase: Address,
 }
@@ -194,7 +193,7 @@ impl BlockInfo {
         base_fee: u64,
         blob_base_fee: u64,
         chain_id: u64,
-        hash: Hash,
+        hash: Word,
         hash_history: HashHistory,
         coinbase: Address,
     ) -> Self {
@@ -240,7 +239,7 @@ impl BlockInfo {
         self.chain_id
     }
 
-    pub fn hash(&self) -> &Hash {
+    pub fn hash(&self) -> &Word {
         &self.hash
     }
 
