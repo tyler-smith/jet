@@ -11,7 +11,7 @@ run: ## Run the project
 
 .PHONY: test
 test: ## Run the tests
-	cargo test
+	cargo nextest run
 
 .PHONY: check
 check: ## Run Cargo check
