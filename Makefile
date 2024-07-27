@@ -1,11 +1,28 @@
 export LLVM_SYS_180_PREFIX=/usr/local/opt/llvm
 export RUST_BACKTRACE=1
 
-.PHONY: commit-check
-commit-check: ## Full check to run before commits
+.PHONY: build
+build: ## Build the project
+	cargo build
+
+.PHONY: run
+run: ## Run the project
+	cargo run
+
+.PHONY: test
+test: ## Run the tests
+	cargo test
+
+.PHONY: check
+check: ## Run Cargo check
 	cargo check
-	cargo nextest run
+
+.PHONY: clippy
+clippy: ## Run clippy
 	cargo clippy --all-targets --all-features -- -D warnings
+
+.PHONY: commit-check
+commit-check: check build test clippy ## Full check to run before commits
 
 .DEFAULT_GOAL := help
 .PHONY: help

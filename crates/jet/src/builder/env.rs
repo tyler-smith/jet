@@ -178,19 +178,17 @@ impl<'ctx> Types<'ctx> {
 pub(crate) struct Symbols<'ctx> {
     jit_engine: GlobalValue<'ctx>,
 
-    new_exec_ctx: FunctionValue<'ctx>,
     stack_push_word: FunctionValue<'ctx>,
     stack_push_ptr: FunctionValue<'ctx>,
 
-    stack_pop_word: FunctionValue<'ctx>,
-    stack_peek_word: FunctionValue<'ctx>,
-    stack_swap_words: FunctionValue<'ctx>,
+    stack_pop: FunctionValue<'ctx>,
+    stack_peek: FunctionValue<'ctx>,
+    stack_swap: FunctionValue<'ctx>,
 
-    memory_store_word: FunctionValue<'ctx>,
-    memory_store_byte: FunctionValue<'ctx>,
-    memory_load_word: FunctionValue<'ctx>,
+    mem_store: FunctionValue<'ctx>,
+    mem_store_byte: FunctionValue<'ctx>,
+    mem_load: FunctionValue<'ctx>,
 
-    contract_fn_lookup: FunctionValue<'ctx>,
     contract_call: FunctionValue<'ctx>,
     contract_call_return_data_copy: FunctionValue<'ctx>,
 
@@ -199,44 +197,39 @@ pub(crate) struct Symbols<'ctx> {
 
 impl<'ctx> Symbols<'ctx> {
     pub fn new(module: &Module<'ctx>) -> Option<Self> {
-        let jit_engine = module.get_global(jet_runtime::GLOBAL_NAME_JIT_ENGINE)?;
+        let jit_engine = module.get_global(jet_runtime::symbols::JIT_ENGINE)?;
 
-        let new_exec_ctx = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_NEW_SUB_CTX)?;
+        let stack_push_word = module.get_function(jet_runtime::symbols::FN_STACK_PUSH_WORD)?;
+        let stack_push_ptr = module.get_function(jet_runtime::symbols::FN_STACK_PUSH_PTR)?;
 
-        let stack_push_word = module.get_function(jet_runtime::FN_NAME_STACK_PUSH_WORD)?;
-        let stack_push_ptr = module.get_function(jet_runtime::FN_NAME_STACK_PUSH_PTR)?;
+        let stack_pop = module.get_function(jet_runtime::symbols::FN_STACK_POP)?;
+        let stack_peek = module.get_function(jet_runtime::symbols::FN_STACK_PEEK)?;
+        let stack_swap = module.get_function(jet_runtime::symbols::FN_STACK_SWAP)?;
 
-        let stack_pop_word = module.get_function(jet_runtime::FN_NAME_STACK_POP)?;
-        let stack_peek_word = module.get_function(jet_runtime::FN_NAME_STACK_PEEK)?;
-        let stack_swap_words = module.get_function(jet_runtime::FN_NAME_STACK_SWAP)?;
+        let mem_store = module.get_function(jet_runtime::symbols::FN_MEM_STORE_WORD)?;
+        let mem_store_byte = module.get_function(jet_runtime::symbols::FN_MEM_STORE_BYTE)?;
+        let mem_load = module.get_function(jet_runtime::symbols::FN_MEM_LOAD)?;
 
-        let memory_store_word = module.get_function(jet_runtime::FN_NAME_MEM_STORE_WORD)?;
-        let memory_store_byte = module.get_function(jet_runtime::FN_NAME_MEM_STORE_BYTE)?;
-        let memory_load_word = module.get_function(jet_runtime::FN_NAME_MEM_LOAD)?;
-
-        let contract_fn_lookup = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_LOOKUP)?;
-        let contract_call = module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL)?;
+        let contract_call = module.get_function(jet_runtime::symbols::FN_CONTRACT_CALL)?;
         let contract_call_return_data_copy =
-            module.get_function(jet_runtime::FN_NAME_CONTRACT_CALL_RETURN_DATA_COPY)?;
+            module.get_function(jet_runtime::symbols::FN_CONTRACT_CALL_RETURN_DATA_COPY)?;
 
-        let keccak256 = module.get_function(jet_runtime::FN_NAME_KECCAK256)?;
+        let keccak256 = module.get_function(jet_runtime::symbols::FN_KECCAK256)?;
 
         Some(Self {
             jit_engine,
 
-            new_exec_ctx,
             stack_push_ptr,
             stack_push_word,
 
-            stack_pop_word,
-            stack_peek_word,
-            stack_swap_words,
+            stack_pop,
+            stack_peek,
+            stack_swap,
 
-            memory_store_word,
-            memory_store_byte,
-            memory_load_word,
+            mem_store,
+            mem_store_byte,
+            mem_load,
 
-            contract_fn_lookup,
             contract_call,
             contract_call_return_data_copy,
 
@@ -248,10 +241,6 @@ impl<'ctx> Symbols<'ctx> {
         self.jit_engine
     }
 
-    pub(crate) fn new_exec_ctx(&self) -> FunctionValue<'ctx> {
-        self.new_exec_ctx
-    }
-
     pub(crate) fn stack_push_ptr(&self) -> FunctionValue<'ctx> {
         self.stack_push_ptr
     }
@@ -260,36 +249,32 @@ impl<'ctx> Symbols<'ctx> {
         self.stack_push_word
     }
 
-    pub(crate) fn stack_pop_word(&self) -> FunctionValue<'ctx> {
-        self.stack_pop_word
+    pub(crate) fn stack_pop(&self) -> FunctionValue<'ctx> {
+        self.stack_pop
     }
 
-    pub(crate) fn stack_peek_word(&self) -> FunctionValue<'ctx> {
-        self.stack_peek_word
+    pub(crate) fn stack_peek(&self) -> FunctionValue<'ctx> {
+        self.stack_peek
     }
 
-    pub(crate) fn stack_swap_words(&self) -> FunctionValue<'ctx> {
-        self.stack_swap_words
+    pub(crate) fn stack_swap(&self) -> FunctionValue<'ctx> {
+        self.stack_swap
     }
 
-    pub(crate) fn mstore(&self) -> FunctionValue<'ctx> {
-        self.memory_store_word
+    pub(crate) fn mem_store(&self) -> FunctionValue<'ctx> {
+        self.mem_store
     }
 
-    pub(crate) fn mstore8(&self) -> FunctionValue<'ctx> {
-        self.memory_store_byte
+    pub(crate) fn mem_store_byte(&self) -> FunctionValue<'ctx> {
+        self.mem_store_byte
     }
 
-    pub(crate) fn mload(&self) -> FunctionValue<'ctx> {
-        self.memory_load_word
+    pub(crate) fn mem_load(&self) -> FunctionValue<'ctx> {
+        self.mem_load
     }
 
     pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
         self.contract_call
-    }
-
-    pub(crate) fn contract_fn_lookup(&self) -> FunctionValue<'ctx> {
-        self.contract_fn_lookup
     }
 
     pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {

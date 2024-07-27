@@ -54,9 +54,7 @@ declare i8 @jet.mem.store.word (ptr, ptr, ptr)
 declare i8 @jet.mem.store.byte (ptr, ptr, ptr)
 declare ptr @jet.mem.load (ptr, ptr)
 
-declare i8 @jet.contracts.lookup(ptr, ptr, i8*)
-declare ptr @jet.contracts.new_sub_ctx ()
-declare i8 @jet.contract.call(ptr, ptr, ptr, i160*, i32*, i32*)
+declare i8 @jet.contract.call(ptr, ptr, ptr, ptr, ptr)
 declare i8 @jet.contracts.call_return_data_copy(ptr, ptr, i32, i32, i32)
 
 declare i8 @jet.ops.keccak256(ptr)

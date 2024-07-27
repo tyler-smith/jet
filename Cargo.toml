@@ -5,3 +5,5 @@ members = [
     "crates/jet",
     "crates/jet_runtime"
 ]
+
+resolver = "3"

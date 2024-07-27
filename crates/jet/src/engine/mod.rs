@@ -10,9 +10,8 @@ use log::{error, info, trace};
 use thiserror::Error;
 
 use jet_runtime::{
-    self, exec,
+    self, builtins, exec,
     exec::{BlockInfo, ContractFunc, ContractRun},
-    functions,
 };
 
 use crate::{
@@ -43,22 +42,12 @@ impl<'ctx> Engine<'ctx> {
         Ok(Engine { build_manager })
     }
 
-    fn get_contract_exec_fn(
-        &self,
-        ee: &ExecutionEngine<'ctx>,
-        addr: &str,
-    ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
-        let name = functions::mangle_contract_fn(addr);
-        info!("Looking up contract function {}", name);
-        unsafe { ee.get_function(name.as_str()) }
-    }
-
     pub fn build_contract(&mut self, addr: &str, rom: &[u8]) -> Result<(), Error> {
         self.build_manager.add_contract_function(addr, rom)?;
         Ok(())
     }
 
-    pub fn run_contract(&self, addr: &str, block_info: &BlockInfo) -> Result<ContractRun, Error> {
+    pub fn run_contract(&self, addr: &str, _block_info: &BlockInfo) -> Result<ContractRun, Error> {
         // Create a JIT execution engine
         let jit = self
             .build_manager
@@ -77,64 +66,45 @@ impl<'ctx> Engine<'ctx> {
 
         trace!("Running function...");
         let ctx = exec::Context::new();
-        let result = unsafe {
-            contract_exec_fn.call(&ctx as *const exec::Context, block_info as *const BlockInfo)
-        };
+        let result = unsafe { contract_exec_fn.call(&ctx as *const exec::Context) };
         trace!("Function returned");
 
         Ok(ContractRun::new(result, ctx))
     }
 
     fn link_in_runtime(&self, ee: &ExecutionEngine) {
-        let symbols = self.build_manager.env().symbols();
+        let sym = self.build_manager.env().symbols();
+        let map_fn = |name, ptr| {
+            ee.add_global_mapping(&name, ptr);
+        };
 
         // Link in the JIT engine
-        let ee_ptr = ee as *const ExecutionEngine as usize;
-        ee.add_global_mapping(&symbols.jit_engine(), ee_ptr);
+        ee.add_global_mapping(&sym.jit_engine(), ee as *const ExecutionEngine as usize);
 
         // Link in runtime functions
-        // TODO: Find a way to ensure everything is set here at compile time
+        map_fn(sym.stack_push_ptr(), builtins::stack_push_ptr as usize);
+        map_fn(sym.stack_pop(), builtins::stack_pop as usize);
+        map_fn(sym.stack_peek(), builtins::stack_peek as usize);
+        map_fn(sym.stack_swap(), builtins::stack_swap as usize);
+        map_fn(sym.mem_store(), builtins::mem_store as usize);
+        map_fn(sym.mem_store_byte(), builtins::mem_store_byte as usize);
+        map_fn(sym.mem_load(), builtins::mem_load as usize);
+        map_fn(sym.contract_call(), builtins::jet_contract_call as usize);
+        map_fn(
+            sym.contract_call_return_data_copy(),
+            builtins::jet_contract_call_return_data_copy as usize,
+        );
+        map_fn(sym.keccak256(), builtins::jet_ops_keccak256 as usize);
+    }
 
-        // ee.add_global_mapping(
-        //     &symbols.stack_push_word(),
-        //     functions::jet_stack_push_word as usize,
-        // );
-        ee.add_global_mapping(
-            &symbols.stack_push_ptr(),
-            functions::jet_stack_push_ptr as usize,
-        );
-        ee.add_global_mapping(&symbols.stack_pop_word(), functions::jet_stack_pop as usize);
-        ee.add_global_mapping(
-            &symbols.stack_peek_word(),
-            functions::jet_stack_peek as usize,
-        );
-        ee.add_global_mapping(
-            &symbols.stack_swap_words(),
-            functions::jet_stack_swap as usize,
-        );
-
-        ee.add_global_mapping(&symbols.mstore(), functions::jet_mem_store_word as usize);
-        ee.add_global_mapping(&symbols.mstore8(), functions::jet_mem_store_byte as usize);
-        ee.add_global_mapping(&symbols.mload(), functions::jet_mem_load as usize);
-
-        ee.add_global_mapping(
-            &symbols.contract_fn_lookup(),
-            functions::jet_contract_fn_lookup as usize,
-        );
-        ee.add_global_mapping(
-            &symbols.contract_call(),
-            functions::jet_contract_call as usize,
-        );
-
-        ee.add_global_mapping(
-            &symbols.new_exec_ctx(),
-            functions::jet_new_main_exec_ctx as usize,
-        );
-        ee.add_global_mapping(
-            &symbols.contract_call_return_data_copy(),
-            functions::jet_contract_call_return_data_copy as usize,
-        );
-        ee.add_global_mapping(&symbols.keccak256(), functions::jet_ops_keccak256 as usize);
+    fn get_contract_exec_fn(
+        &self,
+        ee: &ExecutionEngine<'ctx>,
+        addr: &str,
+    ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
+        let name = exec::mangle_contract_fn(addr);
+        info!("Looking up contract function {}", name);
+        unsafe { ee.get_function(name.as_str()) }
     }
 }
 

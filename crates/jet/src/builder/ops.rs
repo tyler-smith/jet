@@ -5,7 +5,7 @@ use inkwell::{
     values::{AsValueRef, CallSiteValue, IntValue, PointerValue},
 };
 
-use jet_runtime::ReturnCode;
+use jet_runtime::exec::ReturnCode;
 
 use crate::{
     builder::{contract::BuildCtx, Error},
@@ -52,7 +52,7 @@ fn __call_stack_push_ptr<'ctx>(
 
 fn __call_stack_pop<'ctx>(bctx: &BuildCtx<'ctx, '_>) -> Result<PointerValue<'ctx>, Error> {
     let ret = bctx.builder.build_call(
-        bctx.env.symbols().stack_pop_word(),
+        bctx.env.symbols().stack_pop(),
         &[bctx.registers.exec_ctx.into()],
         "word_ptr",
     )?;
@@ -65,7 +65,7 @@ fn __call_stack_peek<'ctx>(
 ) -> Result<PointerValue<'ctx>, Error> {
     let index_value = bctx.env.types().i8.const_int(index as u64, false);
     let ret = bctx.builder.build_call(
-        bctx.env.symbols().stack_peek_word(),
+        bctx.env.symbols().stack_peek(),
         &[bctx.registers.exec_ctx.into(), index_value.into()],
         "stack_peek_word_result",
     )?;
@@ -76,7 +76,7 @@ fn __call_stack_swap(bctx: &BuildCtx<'_, '_>, index: u8) -> Result<(), Error> {
     let index_value = bctx.env.types().i8.const_int(index as u64, false);
 
     bctx.builder.build_call(
-        bctx.env.symbols().stack_swap_words(),
+        bctx.env.symbols().stack_swap(),
         &[bctx.registers.exec_ctx.into(), index_value.into()],
         "stack_swap_ret",
     )?;
@@ -693,7 +693,7 @@ pub(crate) fn pop(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
 pub(crate) fn mload(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let loc = __stack_pop_1(bctx)?;
     let mem_ptr = bctx.builder.build_call(
-        bctx.env.symbols().mload(),
+        bctx.env.symbols().mem_load(),
         &[bctx.registers.exec_ctx.into(), loc.into()],
         "mload",
     )?;
@@ -707,7 +707,7 @@ pub(crate) fn mload(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
 pub(crate) fn mstore(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx)?;
     bctx.builder.build_call(
-        bctx.env.symbols().mstore(),
+        bctx.env.symbols().mem_store(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore",
     )?;
@@ -717,7 +717,7 @@ pub(crate) fn mstore(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
 pub(crate) fn mstore8(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let (loc, val) = __stack_pop_2(bctx)?;
     bctx.builder.build_call(
-        bctx.env.symbols().mstore8(),
+        bctx.env.symbols().mem_store_byte(),
         &[bctx.registers.exec_ctx.into(), loc.into(), val.into()],
         "mstore8",
     )?;
@@ -764,12 +764,6 @@ pub(crate) fn pc(bctx: &BuildCtx<'_, '_>, pc: usize) -> Result<(), Error> {
 pub(crate) fn call(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let (_gas, to, _value, _in_off, _in_len, out_off, out_len) = __stack_pop_7(bctx)?;
 
-    // Create sub call context
-    let call_ctx = bctx
-        .builder
-        .build_call(bctx.env.symbols().new_exec_ctx(), &[], "call_ctx")?;
-    let call_ctx_ptr = unsafe { PointerValue::new(call_ctx.as_value_ref()) };
-
     // Call the contract with the call context
     let contract_call_fn = bctx.env.symbols().contract_call();
     let jit_engine = bctx.env.symbols().jit_engine();
@@ -777,9 +771,8 @@ pub(crate) fn call(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
     let make_contract_call = bctx.builder.build_call(
         contract_call_fn,
         &[
-            jit_engine_ptr.into(),
             bctx.registers.exec_ctx.into(),
-            call_ctx_ptr.into(),
+            jit_engine_ptr.into(),
             to.into(),
             out_off.into(),
             out_len.into(),

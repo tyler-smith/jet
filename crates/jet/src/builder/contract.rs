@@ -6,7 +6,7 @@ use inkwell::{
 };
 use log::{info, trace};
 
-use jet_runtime::ReturnCode;
+use jet_runtime::exec::ReturnCode;
 
 use crate::{
     builder::{env::Env, Error, ops},

@@ -8,7 +8,7 @@ use jet::{
     engine,
     engine::Engine,
 };
-use jet_runtime::{self, exec, ReturnCode};
+use jet_runtime::{self, exec, exec::ReturnCode};
 
 #[derive(Error, Debug)]
 #[error(transparent)]

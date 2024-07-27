@@ -26,8 +26,14 @@ impl fmt::Display for exec::Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {}, return_len: {}, sub_call: {} }}\n",
-            self.stack_ptr(), self.jump_ptr(), self.return_off(), self.return_len(), self.sub_call_ptr()
+            "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {}, return_len: {} }}\n",
+            self.stack_ptr(),
+            self.jump_ptr(),
+            self.return_off(),
+            self.return_len() /* "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {},
+                               * return_len: {}, sub_call: {} }}\n",
+                               * self.stack_ptr(), self.jump_ptr(), self.return_off(),
+                               * self.return_len(), self.sub_call_ptr() */
         )?;
 
         write!(
