@@ -1,6 +1,7 @@
 pub mod binding;
 pub mod builtins;
 pub mod exec;
+pub mod module;
 pub mod symbols;
 
 // System architecture; These are defined by the EVM

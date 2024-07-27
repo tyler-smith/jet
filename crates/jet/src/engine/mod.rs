@@ -1,8 +1,6 @@
 use inkwell::{
     context::Context,
     execution_engine::{ExecutionEngine, FunctionLookupError, JitFunction},
-    memory_buffer::MemoryBuffer,
-    module::Module,
     OptimizationLevel,
     support::LLVMString,
 };
@@ -19,8 +17,6 @@ use crate::{
     builder::{env, env::Env, manager::Manager},
 };
 
-const RUNTIME_IR_FILE: &str = "runtime-ir/jet.ll";
-
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum Error {
@@ -35,7 +31,7 @@ pub struct Engine<'ctx> {
 
 impl<'ctx> Engine<'ctx> {
     pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, Error> {
-        let runtime_module = load_runtime_module(context).unwrap();
+        let runtime_module = jet_runtime::module::load(context).unwrap();
         let build_env = Env::new(context, runtime_module, build_opts);
         let build_manager = Manager::new(build_env);
 
@@ -106,19 +102,4 @@ impl<'ctx> Engine<'ctx> {
         info!("Looking up contract function {}", name);
         unsafe { ee.get_function(name.as_str()) }
     }
-}
-
-fn load_runtime_module(context: &Context) -> Result<Module, Error> {
-    let file_path = std::path::Path::new(RUNTIME_IR_FILE);
-    let ir = MemoryBuffer::create_from_file(file_path);
-    if let Err(e) = ir {
-        error!(
-            "Failed to load runtime IR file: path={}, error={}",
-            file_path.display(),
-            e
-        );
-        return Err(Error::LLVM(e));
-    }
-    let module = context.create_module_from_ir(ir.unwrap())?;
-    Ok(module)
 }
