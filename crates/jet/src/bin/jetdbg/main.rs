@@ -60,69 +60,6 @@ fn build_cmd(args: BuildArgs) -> Result<(), Error> {
         args.assert.unwrap_or(true),
     );
 
-    // let alice_rom = [
-    //     Instruction::PUSH0.opcode(),
-    //     Instruction::KECCAK256.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     0x01,
-    //     Instruction::PUSH1.opcode(),
-    //     0x02,
-    //     Instruction::ADD.opcode(),
-    // ];
-
-    // let alice_rom = [
-    //     Instruction::PUSH1.opcode(),
-    //     0xFF,
-    //     Instruction::PUSH1.opcode(),
-    //     0x02,
-    //     Instruction::MSTORE.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     0x00,
-    //     Instruction::MLOAD.opcode(),
-    //     Instruction::PUSH2.opcode(),
-    //     0xFF,
-    //     0xFF,
-    //     Instruction::PUSH1.opcode(),
-    //     0x00,
-    //     Instruction::MSTORE8.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     0x00,
-    //     Instruction::MLOAD.opcode(),
-    // ];
-
-    // let alice_rom = [
-    //     Instruction::PUSH2.opcode(),
-    //     0xFF,
-    //     0x00,
-    //     Instruction::PUSH2.opcode(),
-    //     0x00,
-    //     0xFF,
-    //     Instruction::ADD.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     1,
-    //     Instruction::ADD.opcode(),
-    //     Instruction::DUP1.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     2,
-    //     Instruction::MUL.opcode(),
-    //     Instruction::PC.opcode(),
-    //     // Instruction::BYTE.opcode(),
-    // ];
-
-    // let alice_rom = [
-    //     Instruction::PUSH2.opcode(),
-    //     0xFF,
-    //     0x00,
-    //     Instruction::PUSH2.opcode(),
-    //     0x00,
-    //     0xFF,
-    //     Instruction::ADD.opcode(),
-    //     Instruction::PUSH1.opcode(),
-    //     1,
-    //     Instruction::ADD.opcode(),
-    //     // Instruction::BYTE.opcode(),
-    // ];
-
     let alice_rom = [
         Instruction::PUSH1.opcode(), // Output len
         0x0A,
