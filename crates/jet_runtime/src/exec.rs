@@ -18,6 +18,7 @@ pub struct Context {
     return_len: u32,
 
     sub_call: Option<Box<Context>>,
+
     stack: [Word; STACK_SIZE_WORDS as usize],
 
     pub(crate) memory: [u8; (WORD_SIZE_BYTES * MEMORY_INITIAL_SIZE_WORDS) as usize],
