@@ -1,6 +1,8 @@
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{self, Read},
+    path::Path,
+};
 
 use clap::Arg;
 use inkwell::context::Context;
@@ -94,7 +96,7 @@ fn compile_evm_to_llvm_ir(address: &str, bytecode: &[u8]) -> Result<String, Erro
     let build_opts =
         jet::builder::env::Options::new(jet::builder::env::Mode::Debug, false, false, true);
     let env = jet::builder::env::Env::new(&context, module, build_opts);
-    let manager = jet::builder::manager::Manager::new(env);
+    let manager = jet::builder::builder::Builder::new(env);
 
     manager.add_contract_function(address, bytecode)?;
 

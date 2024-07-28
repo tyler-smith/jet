@@ -16,16 +16,16 @@ pub struct Options {
     mode: Mode,
     vstack: bool,
     emit_llvm: bool,
-    assert: bool,
+    verify: bool,
 }
 
 impl Options {
-    pub fn new(mode: Mode, vstack: bool, emit_llvm: bool, assert: bool) -> Self {
+    pub fn new(mode: Mode, vstack: bool, emit_llvm: bool, verify: bool) -> Self {
         Self {
             mode,
             vstack,
             emit_llvm,
-            assert,
+            verify,
         }
     }
 
@@ -41,8 +41,8 @@ impl Options {
         self.emit_llvm
     }
 
-    pub fn assert(&self) -> bool {
-        self.assert
+    pub fn verify(&self) -> bool {
+        self.verify
     }
 }
 

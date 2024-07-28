@@ -3,10 +3,10 @@ use thiserror::Error;
 
 use crate::instructions::Instruction;
 
+pub mod builder;
 pub mod contract;
 pub mod env;
-pub mod manager;
-pub(crate) mod ops;
+pub mod ops;
 
 #[derive(Error, Debug)]
 pub enum Error {

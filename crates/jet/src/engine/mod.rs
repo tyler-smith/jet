@@ -14,7 +14,7 @@ use jet_runtime::{
 
 use crate::{
     builder,
-    builder::{env, env::Env, manager::Manager},
+    builder::{builder::Builder, env, env::Env},
 };
 
 #[derive(Error, Debug)]
@@ -26,27 +26,27 @@ pub enum Error {
 }
 
 pub struct Engine<'ctx> {
-    build_manager: Manager<'ctx>,
+    builder: Builder<'ctx>,
 }
 
 impl<'ctx> Engine<'ctx> {
     pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, Error> {
         let runtime_module = jet_runtime::module::load(context).unwrap();
-        let build_env = Env::new(context, runtime_module, build_opts);
-        let build_manager = Manager::new(build_env);
+        let env = Env::new(context, runtime_module, build_opts);
+        let builder = Builder::new(env);
 
-        Ok(Engine { build_manager })
+        Ok(Engine { builder })
     }
 
     pub fn build_contract(&mut self, addr: &str, rom: &[u8]) -> Result<(), Error> {
-        self.build_manager.add_contract_function(addr, rom)?;
+        self.builder.add_contract_function(addr, rom)?;
         Ok(())
     }
 
     pub fn run_contract(&self, addr: &str, _block_info: &BlockInfo) -> Result<ContractRun, Error> {
         // Create a JIT execution engine
         let jit = self
-            .build_manager
+            .builder
             .env()
             .module()
             .create_jit_execution_engine(OptimizationLevel::None)?;
@@ -69,7 +69,7 @@ impl<'ctx> Engine<'ctx> {
     }
 
     fn link_in_runtime(&self, ee: &ExecutionEngine) {
-        let sym = self.build_manager.env().symbols();
+        let sym = self.builder.env().symbols();
         let map_fn = |name, ptr| {
             ee.add_global_mapping(&name, ptr);
         };

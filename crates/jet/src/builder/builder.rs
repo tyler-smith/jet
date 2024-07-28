@@ -10,41 +10,41 @@ use jet_runtime::exec;
 
 use crate::builder::{contract, env::Env, Error};
 
-pub struct Manager<'ctx> {
-    build_env: Env<'ctx>,
+pub struct Builder<'ctx> {
+    env: Env<'ctx>,
 }
 
-impl<'ctx> Manager<'ctx> {
-    pub fn new(build_env: Env<'ctx>) -> Self {
-        Self { build_env }
+impl<'ctx> Builder<'ctx> {
+    pub fn new(env: Env<'ctx>) -> Self {
+        Self { env }
     }
 
     pub fn env(&self) -> &Env<'ctx> {
-        &self.build_env
+        &self.env
     }
 
     pub fn add_contract_function(&self, addr: &str, rom: &[u8]) -> Result<(), Error> {
         let fn_name = exec::mangle_contract_fn(addr);
         info!("Building ROM into function {}", fn_name);
 
-        contract::build(&self.build_env, &fn_name, rom)?;
+        contract::build(&self.env, &fn_name, rom)?;
 
-        if self.build_env.opts().emit_llvm() {
+        if self.env.opts().emit_llvm() {
             self.print_ir();
         }
 
-        if self.build_env.opts().assert() {
+        if self.env.opts().verify() {
             if !self.verify_contract(addr) {
                 return Err(Error::Verify);
             }
-            self.build_env.module().verify()?;
+            self.env.module().verify()?;
         }
         Ok(())
     }
 
     fn verify_contract(&self, addr: &str) -> bool {
         let func_name = exec::mangle_contract_fn(addr);
-        let func = self.build_env.module().get_function(&func_name).unwrap();
+        let func = self.env.module().get_function(&func_name).unwrap();
         func.verify(true)
     }
 
@@ -63,7 +63,7 @@ impl<'ctx> Manager<'ctx> {
 
         let mut h = HighlightLines::new(syntax, &theme);
 
-        let s = self.build_env.module().print_to_string().to_string();
+        let s = self.env.module().print_to_string().to_string();
 
         println!();
         for line in LinesWithEndings::from(s.as_str()) {
