@@ -11,7 +11,7 @@ use jet_runtime::exec;
 use crate::builder::{contract, env::Env, Error};
 
 pub struct Builder<'ctx> {
-    env: Env<'ctx>,
+    pub(crate) env: Env<'ctx>,
 }
 
 impl<'ctx> Builder<'ctx> {
@@ -19,8 +19,8 @@ impl<'ctx> Builder<'ctx> {
         Self { env }
     }
 
-    pub fn env(&self) -> &Env<'ctx> {
-        &self.env
+    pub fn module(&self) -> &inkwell::module::Module<'ctx> {
+        &self.env.module
     }
 
     pub fn add_contract_function(&self, addr: &str, rom: &[u8]) -> Result<(), Error> {
@@ -29,22 +29,22 @@ impl<'ctx> Builder<'ctx> {
 
         contract::build(&self.env, &fn_name, rom)?;
 
-        if self.env.opts().emit_llvm() {
+        if self.env.opts.emit_llvm() {
             self.print_ir();
         }
 
-        if self.env.opts().verify() {
+        if self.env.opts.verify() {
             if !self.verify_contract(addr) {
                 return Err(Error::Verify);
             }
-            self.env.module().verify()?;
+            self.env.module.verify()?;
         }
         Ok(())
     }
 
     fn verify_contract(&self, addr: &str) -> bool {
         let func_name = exec::mangle_contract_fn(addr);
-        let func = self.env.module().get_function(&func_name).unwrap();
+        let func = self.env.module.get_function(&func_name).unwrap();
         func.verify(true)
     }
 
@@ -63,7 +63,7 @@ impl<'ctx> Builder<'ctx> {
 
         let mut h = HighlightLines::new(syntax, &theme);
 
-        let s = self.env.module().print_to_string().to_string();
+        let s = self.env.module.print_to_string().to_string();
 
         println!();
         for line in LinesWithEndings::from(s.as_str()) {

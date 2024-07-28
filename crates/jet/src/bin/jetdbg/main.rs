@@ -4,7 +4,7 @@ use log::SetLoggerError;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::{builder::env, engine::Engine};
+use jet::{builder, engine::Engine};
 use jet_runtime::{self, exec};
 
 use crate::contracts::BytecodeList;
@@ -97,8 +97,8 @@ fn run(matches: &clap::ArgMatches) -> Result<(), Error> {
     logger.init()?;
 
     // Create build options
-    let build_opts = env::Options::new(
-        env::Mode::Debug,
+    let build_opts = builder::Options::new(
+        builder::Mode::Debug,
         false,
         matches.get_flag(FLAG_EMIT_LLVM),
         true,

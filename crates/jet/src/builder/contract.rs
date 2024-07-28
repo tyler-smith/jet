@@ -34,7 +34,7 @@ impl<'ctx> Registers<'ctx> {
         builder: &inkwell::builder::Builder<'ctx>,
         func: FunctionValue<'ctx>,
     ) -> Self {
-        let t = env.types();
+        let t = &env.types;
         let exec_ctx = func.get_nth_param(0).unwrap().into_pointer_value();
         let block_info = func.get_nth_param(1).unwrap().into_pointer_value();
 
@@ -166,19 +166,19 @@ impl<'ctx, 'b> CodeBlocks<'ctx, 'b> {
 }
 
 pub fn build(env: &'_ Env<'_>, name: &str, rom: &[u8]) -> Result<(), Error> {
-    let builder = env.context().create_builder();
+    let builder = env.context.create_builder();
 
     // Declare the function in the module
-    let func_type = env.types().contract_fn;
-    let func = env.module().add_function(name, func_type, None);
+    let func_type = env.types.contract_fn;
+    let func = env.module.add_function(name, func_type, None);
     info!(
         "Created function {} in module {}",
         name,
-        env.module().get_name().to_str().unwrap()
+        env.module.get_name().to_str().unwrap()
     );
 
     // Create the preamble block
-    let preamble_block = env.context().append_basic_block(func, "preamble");
+    let preamble_block = env.context.append_basic_block(func, "preamble");
     builder.position_at_end(preamble_block);
 
     // Build ROM into IR
@@ -202,7 +202,7 @@ fn find_code_blocks<'ctx, 'b>(
     trace!("find_code_blocks: Creating code blocks");
     trace!("find_code_blocks: ROM: {:?}", bytecode);
 
-    let create_bb = || env.context().append_basic_block(func, "block");
+    let create_bb = || env.context.append_basic_block(func, "block");
 
     let mut blocks = CodeBlocks::new();
     let mut current_block: &mut CodeBlock = blocks.add(0, create_bb());
@@ -286,16 +286,12 @@ fn build_contract_body<'ctx, 'b>(
     bctx: &'b BuildCtx<'ctx, 'b>,
     code_blocks: &CodeBlocks<'ctx, 'b>,
 ) -> Result<(), Error> {
-    let t = bctx.env.types();
+    let t = &bctx.env.types;
 
     let mut jump_cases = Vec::new();
 
     let jump_block = match code_blocks.has_jumpdest() {
-        true => Some(
-            bctx.env
-                .context()
-                .append_basic_block(bctx.func, "jump_block"),
-        ),
+        true => Some(bctx.env.context.append_basic_block(bctx.func, "jump_block")),
         false => None,
     };
 
@@ -652,11 +648,11 @@ fn build_jump_table(
     jump_block: BasicBlock,
     jump_cases: &[(IntValue, BasicBlock)],
 ) -> Result<(), Error> {
-    let t = bctx.env.types();
+    let t = &bctx.env.types;
 
     let jump_failure_block = bctx
         .env
-        .context()
+        .context
         .append_basic_block(bctx.func, "jump_failure");
     bctx.builder.position_at_end(jump_failure_block);
     let return_value = t.i8.const_int(ReturnCode::JumpFailure as u64, false);

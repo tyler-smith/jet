@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use jet::{
     builder,
-    builder::env::{Mode::Debug, Options},
+    builder::{Mode::Debug, Options},
     engine,
     engine::Engine,
 };

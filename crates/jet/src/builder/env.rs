@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use inkwell::{
     AddressSpace,
     context::Context,
@@ -7,90 +5,24 @@ use inkwell::{
     values::{FunctionValue, GlobalValue},
 };
 
-use jet_runtime;
+use jet_runtime::{STACK_SIZE_WORDS, symbols};
+
+use crate::builder::{Error, Options};
 
 const PACK_STRUCTS: bool = true;
 
-#[derive(serde::Serialize, Clone, Debug, Default)]
-pub struct Options {
-    mode: Mode,
-    vstack: bool,
-    emit_llvm: bool,
-    verify: bool,
-}
-
-impl Options {
-    pub fn new(mode: Mode, vstack: bool, emit_llvm: bool, verify: bool) -> Self {
-        Self {
-            mode,
-            vstack,
-            emit_llvm,
-            verify,
-        }
-    }
-
-    pub fn mode(&self) -> Mode {
-        self.mode.clone()
-    }
-
-    pub fn vstack(&self) -> bool {
-        self.vstack
-    }
-
-    pub fn emit_llvm(&self) -> bool {
-        self.emit_llvm
-    }
-
-    pub fn verify(&self) -> bool {
-        self.verify
-    }
-}
-
-#[derive(clap::ValueEnum, serde::Serialize, Clone, Debug, Default, PartialEq, Eq)]
-pub enum Mode {
-    #[default]
-    Debug = 0,
-    Release = 1,
-}
-
-impl FromStr for Mode {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "release" => Ok(Self::Release),
-            "debug" => Ok(Self::Debug),
-            _ => Err(()),
-        }
-    }
-}
-
 pub struct Types<'ctx> {
-    // Primitives
-    pub i8: inkwell::types::IntType<'ctx>,
-    pub i32: inkwell::types::IntType<'ctx>,
-    pub i64: inkwell::types::IntType<'ctx>,
-    pub i160: inkwell::types::IntType<'ctx>,
-    pub i256: inkwell::types::IntType<'ctx>,
-    pub ptr: inkwell::types::PointerType<'ctx>,
-    pub word_bytes: inkwell::types::ArrayType<'ctx>,
+    pub(crate) i8: inkwell::types::IntType<'ctx>,
+    pub(crate) i32: inkwell::types::IntType<'ctx>,
+    pub(crate) i64: inkwell::types::IntType<'ctx>,
+    pub(crate) i256: inkwell::types::IntType<'ctx>,
 
-    // Architecture
-    pub stack: inkwell::types::ArrayType<'ctx>,
+    pub(crate) ptr: inkwell::types::PointerType<'ctx>,
+    pub(crate) word_bytes: inkwell::types::ArrayType<'ctx>,
 
-    pub mem_len: inkwell::types::IntType<'ctx>,
-    pub mem_cap: inkwell::types::IntType<'ctx>,
-    pub mem: inkwell::types::StructType<'ctx>,
-
-    // Runtime
-    pub stack_ptr: inkwell::types::IntType<'ctx>,
-    pub jump_ptr: inkwell::types::IntType<'ctx>,
-    pub return_offset: inkwell::types::IntType<'ctx>,
-    pub return_length: inkwell::types::IntType<'ctx>,
-
-    pub exec_ctx: inkwell::types::StructType<'ctx>,
-    pub block_info: inkwell::types::StructType<'ctx>,
-    pub contract_fn: inkwell::types::FunctionType<'ctx>,
+    pub(crate) exec_ctx: inkwell::types::StructType<'ctx>,
+    pub(crate) block_info: inkwell::types::StructType<'ctx>,
+    pub(crate) contract_fn: inkwell::types::FunctionType<'ctx>,
 }
 
 impl<'ctx> Types<'ctx> {
@@ -104,14 +36,13 @@ impl<'ctx> Types<'ctx> {
         let ptr = context.ptr_type(AddressSpace::default());
         let word_bytes = i8.array_type(32);
 
-        // Architecture
-        let stack = i256.array_type(jet_runtime::STACK_SIZE_WORDS);
+        // Context struct
+        let stack = i256.array_type(STACK_SIZE_WORDS);
 
         let mem_len = context.i32_type();
         let mem_cap = context.i32_type();
         let mem = context.struct_type(&[ptr.into(), mem_len.into(), mem_cap.into()], PACK_STRUCTS);
 
-        // Registers
         let stack_ptr = context.i32_type();
         let jump_ptr = context.i32_type();
         let return_offset = context.i32_type();
@@ -145,28 +76,16 @@ impl<'ctx> Types<'ctx> {
             PACK_STRUCTS,
         );
 
-        // contract func sig: func(ctx: &exec_ctx, block_info: &BlockInfo) i8
         let contract_fn = context.i8_type().fn_type(&[ptr.into(), ptr.into()], false);
 
         Self {
             i8,
             i32,
             i64,
-            i160,
             i256,
+
             ptr,
             word_bytes,
-
-            stack,
-
-            mem_len,
-            mem_cap,
-            mem,
-
-            stack_ptr,
-            jump_ptr,
-            return_offset,
-            return_length,
 
             exec_ctx,
             block_info,
@@ -175,164 +94,87 @@ impl<'ctx> Types<'ctx> {
     }
 }
 
-pub(crate) struct Symbols<'ctx> {
-    jit_engine: GlobalValue<'ctx>,
+pub(crate) struct SymbolTable<'ctx> {
+    pub(crate) jit_engine: GlobalValue<'ctx>,
 
-    stack_push_word: FunctionValue<'ctx>,
-    stack_push_ptr: FunctionValue<'ctx>,
+    pub(crate) stack_push_word: FunctionValue<'ctx>,
+    pub(crate) stack_push_ptr: FunctionValue<'ctx>,
 
-    stack_pop: FunctionValue<'ctx>,
-    stack_peek: FunctionValue<'ctx>,
-    stack_swap: FunctionValue<'ctx>,
+    pub(crate) stack_pop: FunctionValue<'ctx>,
+    pub(crate) stack_peek: FunctionValue<'ctx>,
+    pub(crate) stack_swap: FunctionValue<'ctx>,
 
-    mem_store: FunctionValue<'ctx>,
-    mem_store_byte: FunctionValue<'ctx>,
-    mem_load: FunctionValue<'ctx>,
+    pub(crate) mem_store: FunctionValue<'ctx>,
+    pub(crate) mem_store_byte: FunctionValue<'ctx>,
+    pub(crate) mem_load: FunctionValue<'ctx>,
 
-    contract_call: FunctionValue<'ctx>,
-    contract_call_return_data_copy: FunctionValue<'ctx>,
+    pub(crate) contract_call: FunctionValue<'ctx>,
+    pub(crate) contract_call_return_data_copy: FunctionValue<'ctx>,
 
-    keccak256: FunctionValue<'ctx>,
+    pub(crate) keccak256: FunctionValue<'ctx>,
 }
 
-impl<'ctx> Symbols<'ctx> {
-    pub fn new(module: &Module<'ctx>) -> Option<Self> {
-        let jit_engine = module.get_global(jet_runtime::symbols::JIT_ENGINE)?;
+impl<'ctx> SymbolTable<'ctx> {
+    pub fn new(module: &Module<'ctx>) -> Result<Self, &'static str> {
+        let jit_engine = match module.get_global(symbols::JIT_ENGINE) {
+            Some(g) => g,
+            None => return Err(symbols::JIT_ENGINE),
+        };
 
-        let stack_push_word = module.get_function(jet_runtime::symbols::FN_STACK_PUSH_WORD)?;
-        let stack_push_ptr = module.get_function(jet_runtime::symbols::FN_STACK_PUSH_PTR)?;
+        let get_fn = |name: &'static str| -> Result<FunctionValue, &'static str> {
+            match module.get_function(name) {
+                Some(f) => Ok(f),
+                None => Err(name),
+            }
+        };
 
-        let stack_pop = module.get_function(jet_runtime::symbols::FN_STACK_POP)?;
-        let stack_peek = module.get_function(jet_runtime::symbols::FN_STACK_PEEK)?;
-        let stack_swap = module.get_function(jet_runtime::symbols::FN_STACK_SWAP)?;
-
-        let mem_store = module.get_function(jet_runtime::symbols::FN_MEM_STORE_WORD)?;
-        let mem_store_byte = module.get_function(jet_runtime::symbols::FN_MEM_STORE_BYTE)?;
-        let mem_load = module.get_function(jet_runtime::symbols::FN_MEM_LOAD)?;
-
-        let contract_call = module.get_function(jet_runtime::symbols::FN_CONTRACT_CALL)?;
-        let contract_call_return_data_copy =
-            module.get_function(jet_runtime::symbols::FN_CONTRACT_CALL_RETURN_DATA_COPY)?;
-
-        let keccak256 = module.get_function(jet_runtime::symbols::FN_KECCAK256)?;
-
-        Some(Self {
+        Ok(Self {
             jit_engine,
 
-            stack_push_ptr,
-            stack_push_word,
+            stack_push_word: get_fn(symbols::FN_STACK_PUSH_WORD)?,
+            stack_push_ptr: get_fn(symbols::FN_STACK_PUSH_PTR)?,
+            stack_pop: get_fn(symbols::FN_STACK_POP)?,
+            stack_peek: get_fn(symbols::FN_STACK_PEEK)?,
+            stack_swap: get_fn(symbols::FN_STACK_SWAP)?,
 
-            stack_pop,
-            stack_peek,
-            stack_swap,
+            mem_store: get_fn(symbols::FN_MEM_STORE_WORD)?,
+            mem_store_byte: get_fn(symbols::FN_MEM_STORE_BYTE)?,
+            mem_load: get_fn(symbols::FN_MEM_LOAD)?,
 
-            mem_store,
-            mem_store_byte,
-            mem_load,
+            contract_call: get_fn(symbols::FN_CONTRACT_CALL)?,
+            contract_call_return_data_copy: get_fn(symbols::FN_CONTRACT_CALL_RETURN_DATA_COPY)?,
 
-            contract_call,
-            contract_call_return_data_copy,
-
-            keccak256,
+            keccak256: get_fn(symbols::FN_KECCAK256)?,
         })
-    }
-
-    pub(crate) fn jit_engine(&self) -> GlobalValue<'ctx> {
-        self.jit_engine
-    }
-
-    pub(crate) fn stack_push_ptr(&self) -> FunctionValue<'ctx> {
-        self.stack_push_ptr
-    }
-
-    pub(crate) fn stack_push_word(&self) -> FunctionValue<'ctx> {
-        self.stack_push_word
-    }
-
-    pub(crate) fn stack_pop(&self) -> FunctionValue<'ctx> {
-        self.stack_pop
-    }
-
-    pub(crate) fn stack_peek(&self) -> FunctionValue<'ctx> {
-        self.stack_peek
-    }
-
-    pub(crate) fn stack_swap(&self) -> FunctionValue<'ctx> {
-        self.stack_swap
-    }
-
-    pub(crate) fn mem_store(&self) -> FunctionValue<'ctx> {
-        self.mem_store
-    }
-
-    pub(crate) fn mem_store_byte(&self) -> FunctionValue<'ctx> {
-        self.mem_store_byte
-    }
-
-    pub(crate) fn mem_load(&self) -> FunctionValue<'ctx> {
-        self.mem_load
-    }
-
-    pub(crate) fn contract_call(&self) -> FunctionValue<'ctx> {
-        self.contract_call
-    }
-
-    pub(crate) fn contract_call_return_data_copy(&self) -> FunctionValue<'ctx> {
-        self.contract_call_return_data_copy
-    }
-
-    pub(crate) fn keccak256(&self) -> FunctionValue<'ctx> {
-        self.keccak256
     }
 }
 
 pub struct Env<'ctx> {
-    opts: Options,
+    pub(crate) opts: Options,
 
-    context: &'ctx Context,
-    module: Module<'ctx>,
+    pub(crate) context: &'ctx Context,
+    pub(crate) module: Module<'ctx>,
 
-    types: Types<'ctx>,
-    symbols: Symbols<'ctx>,
+    pub(crate) types: Types<'ctx>,
+    pub(crate) symbol_table: SymbolTable<'ctx>,
 }
 
 impl<'ctx> Env<'ctx> {
-    pub fn new(context: &'ctx Context, module: Module<'ctx>, opts: Options) -> Self {
+    pub fn new(context: &'ctx Context, module: Module<'ctx>, opts: Options) -> Result<Self, Error> {
         let types = Types::new(context);
-        let runtime_fns = Symbols::new(&module);
+        let symbol_table = match SymbolTable::new(&module) {
+            Ok(s) => s,
+            Err(name) => return Err(Error::MissingSymbol(name.to_string())),
+        };
 
-        if runtime_fns.is_none() {
-            panic!("Failed to load all runtime functions");
-        }
-
-        Self {
+        Ok(Self {
             opts,
 
             context,
             module,
 
             types,
-            symbols: runtime_fns.unwrap(),
-        }
-    }
-
-    pub fn context(&self) -> &'ctx Context {
-        self.context
-    }
-
-    pub fn module(&self) -> &Module<'ctx> {
-        &self.module
-    }
-
-    pub fn opts(&self) -> &Options {
-        &self.opts
-    }
-
-    pub(crate) fn types(&self) -> &Types<'ctx> {
-        &self.types
-    }
-
-    pub(crate) fn symbols(&self) -> &Symbols<'ctx> {
-        &self.symbols
+            symbol_table,
+        })
     }
 }

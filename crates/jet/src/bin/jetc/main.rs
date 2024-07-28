@@ -8,6 +8,8 @@ use clap::Arg;
 use inkwell::context::Context;
 use thiserror::Error;
 
+use jet::builder::{Builder, env::Env, Mode, Options};
+
 #[derive(Error, Debug)]
 #[error(transparent)]
 enum Error {
@@ -93,13 +95,12 @@ fn parse_hex(s: &str) -> Vec<u8> {
 fn compile_evm_to_llvm_ir(address: &str, bytecode: &[u8]) -> Result<String, Error> {
     let context = Context::create();
     let module = jet_runtime::module::load(&context).unwrap();
-    let build_opts =
-        jet::builder::env::Options::new(jet::builder::env::Mode::Debug, false, false, true);
-    let env = jet::builder::env::Env::new(&context, module, build_opts);
-    let manager = jet::builder::builder::Builder::new(env);
+    let build_opts = Options::new(Mode::Debug, false, false, true);
+    let env = Env::new(&context, module, build_opts)?;
+    let builder = Builder::new(env);
 
-    manager.add_contract_function(address, bytecode)?;
+    builder.add_contract_function(address, bytecode)?;
 
-    let s = manager.env().module().print_to_string().to_string();
+    let s = builder.module().print_to_string().to_string();
     Ok(s)
 }

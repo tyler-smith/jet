@@ -14,7 +14,10 @@ use jet_runtime::{
 
 use crate::{
     builder,
-    builder::{builder::Builder, env, env::Env},
+    builder::{
+        Builder,
+        env::{Env, SymbolTable},
+    },
 };
 
 #[derive(Error, Debug)]
@@ -31,9 +34,9 @@ pub struct Engine<'ctx> {
 }
 
 impl<'ctx> Engine<'ctx> {
-    pub fn new(context: &'ctx Context, build_opts: env::Options) -> Result<Self, Error> {
+    pub fn new(context: &'ctx Context, build_opts: builder::Options) -> Result<Self, Error> {
         let runtime_module = jet_runtime::module::load(context).unwrap();
-        let env = Env::new(context, runtime_module, build_opts);
+        let env = Env::new(context, runtime_module, build_opts)?;
         let builder = Builder::new(env);
         let jit = new_jit(&builder)?;
 
@@ -67,35 +70,35 @@ impl<'ctx> Engine<'ctx> {
 
 fn new_jit<'ctx>(builder: &Builder<'ctx>) -> Result<ExecutionEngine<'ctx>, Error> {
     let jit = builder
-        .env()
-        .module()
+        .env
+        .module
         .create_jit_execution_engine(OptimizationLevel::None)?;
 
-    link_in_runtime(&jit, &builder.env().symbols());
+    link_in_runtime(&jit, &builder.env.symbol_table);
 
     Ok(jit)
 }
 
-fn link_in_runtime(ee: &ExecutionEngine, sym: &env::Symbols) {
+fn link_in_runtime(ee: &ExecutionEngine, sym: &SymbolTable) {
     let map_fn = |name, ptr| {
         ee.add_global_mapping(&name, ptr);
     };
 
     // Link in the JIT engine
-    ee.add_global_mapping(&sym.jit_engine(), ee as *const ExecutionEngine as usize);
+    ee.add_global_mapping(&sym.jit_engine, ee as *const ExecutionEngine as usize);
 
     // Link in runtime functions
-    map_fn(sym.stack_push_ptr(), builtins::stack_push_ptr as usize);
-    map_fn(sym.stack_pop(), builtins::stack_pop as usize);
-    map_fn(sym.stack_peek(), builtins::stack_peek as usize);
-    map_fn(sym.stack_swap(), builtins::stack_swap as usize);
-    map_fn(sym.mem_store(), builtins::mem_store as usize);
-    map_fn(sym.mem_store_byte(), builtins::mem_store_byte as usize);
-    map_fn(sym.mem_load(), builtins::mem_load as usize);
-    map_fn(sym.contract_call(), builtins::jet_contract_call as usize);
+    map_fn(sym.stack_push_ptr, builtins::stack_push_ptr as usize);
+    map_fn(sym.stack_pop, builtins::stack_pop as usize);
+    map_fn(sym.stack_peek, builtins::stack_peek as usize);
+    map_fn(sym.stack_swap, builtins::stack_swap as usize);
+    map_fn(sym.mem_store, builtins::mem_store as usize);
+    map_fn(sym.mem_store_byte, builtins::mem_store_byte as usize);
+    map_fn(sym.mem_load, builtins::mem_load as usize);
+    map_fn(sym.contract_call, builtins::jet_contract_call as usize);
     map_fn(
-        sym.contract_call_return_data_copy(),
+        sym.contract_call_return_data_copy,
         builtins::jet_contract_call_return_data_copy as usize,
     );
-    map_fn(sym.keccak256(), builtins::jet_ops_keccak256 as usize);
+    map_fn(sym.keccak256, builtins::jet_ops_keccak256 as usize);
 }
