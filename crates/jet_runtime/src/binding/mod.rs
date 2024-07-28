@@ -22,23 +22,24 @@ impl fmt::Display for exec::BlockInfo {
     }
 }
 
-impl fmt::Display for exec::Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl exec::Context {
+    fn fmt_with_indent(&self, f: &mut fmt::Formatter, indent: &str) -> fmt::Result {
         write!(
             f,
-            "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {}, return_len: {} }}\n",
+            "{}Context:\n{}  {{ stack ptr: {}, jump ptr: {}, return_off: {}, return_len: {} }}\n",
+            indent,
+            indent,
             self.stack_ptr(),
             self.jump_ptr(),
             self.return_off(),
-            self.return_len() /* "Context:\n  {{ stack ptr: {}, jump ptr: {}, return_off: {},
-                               * return_len: {}, sub_call: {} }}\n",
-                               * self.stack_ptr(), self.jump_ptr(), self.return_off(),
-                               * self.return_len(), self.sub_call_ptr() */
+            self.return_len()
         )?;
 
         write!(
             f,
-            "Memory:\n  {{ len: {}, cap: {} }}\n",
+            "{}Memory:\n{}  {{ len: {}, cap: {} }}\n",
+            indent,
+            indent,
             self.memory_len(),
             self.memory_cap()
         )?;
@@ -47,7 +48,8 @@ impl fmt::Display for exec::Context {
             let end = offset + 32;
             writeln!(
                 f,
-                "  {}: {}",
+                "{}  {}: {}",
+                indent,
                 i,
                 self.memory()[offset..end]
                     .iter()
@@ -56,37 +58,51 @@ impl fmt::Display for exec::Context {
             )?;
         }
 
-        writeln!(f, "Stack:")?;
         let stack = self.stack();
         let stack_size = self.stack_ptr() as usize;
 
         // Print out each 32 byte word, starting from the top of the stack and working down
         // for word_i in (stack_size - 1)..=0 {
-        for i in 0..stack_size {
-            let word_i = stack_size - i - 1;
-            writeln!(
-                f,
-                "  {}: {}",
-                word_i,
-                stack[word_i]
-                    .iter()
-                    .take(32)
-                    .rev()
-                    .fold((String::new(), false), byte_formatter)
-                    .0
-            )?;
+        if stack_size == 0 {
+            writeln!(f, "{}Stack: Empty", indent)?;
+        } else {
+            writeln!(f, "{}Stack:", indent)?;
+            for i in 0..stack_size {
+                let word_i = stack_size - i - 1;
+                writeln!(
+                    f,
+                    "{}  {}: {}",
+                    indent,
+                    word_i,
+                    stack[word_i]
+                        .iter()
+                        .take(32)
+                        .rev()
+                        .fold((String::new(), false), byte_formatter)
+                        .0
+                )?;
+            }
         }
 
         match self.sub_ctx() {
             Some(sub_ctx) => {
-                writeln!(f, "Sub Call:\n{}", sub_ctx)?;
+                let sub_indent = indent.to_string() + "  ";
+                writeln!(f, "{}Sub Call:", indent)?;
+                sub_ctx.fmt_with_indent(f, sub_indent.as_str())?;
+                writeln!(f, "")?;
             }
             None => {
-                writeln!(f, "Sub Call: None")?;
+                writeln!(f, "{}Sub Call: None", indent)?;
             }
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for exec::Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_with_indent(f, "")
     }
 }
 
@@ -116,9 +132,10 @@ impl fmt::Display for exec::ContractRun {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "ContractRun:\nResult: {:?}\n{}",
+            "Contract execution:\n  Result: {:?}\n",
             self.result(),
-            self.ctx()
-        )
+            // self.ctx(),
+        )?;
+        self.ctx().fmt_with_indent(f, "  ")
     }
 }

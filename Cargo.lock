@@ -317,6 +317,7 @@ dependencies = [
  "hex",
  "inkwell",
  "jet_runtime",
+ "lazy_static",
  "libc",
  "llvm-sys",
  "log",

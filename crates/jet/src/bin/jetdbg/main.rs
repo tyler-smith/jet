@@ -1,48 +1,18 @@
-use clap::{Parser, Subcommand};
+use clap::{Arg, ArgAction, Command};
 use inkwell::context::Context;
-use log::info;
+use log::SetLoggerError;
 use simple_logger::SimpleLogger;
 use thiserror::Error;
 
-use jet::instructions::Instruction;
+use jet::{builder::env, engine::Engine};
 use jet_runtime::{self, exec};
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    cmd: Option<Commands>,
+use crate::contracts::BytecodeList;
 
-    #[arg(short, long)]
-    log_level: Option<log::LevelFilter>,
+mod contracts;
 
-    #[arg(short, long)]
-    mode: Option<jet::builder::env::Mode>,
-
-    #[arg(short, long, action)]
-    use_vstack: Option<bool>,
-
-    #[arg(short, long)]
-    emit_llvm: Option<bool>,
-
-    #[arg(short, long, action)]
-    assert: Option<bool>,
-}
-
-#[derive(Parser, Debug, Default, Clone)]
-struct BuildArgs {
-    #[arg(short, long)]
-    mode: Option<jet::builder::env::Mode>,
-
-    #[arg(short, long, action)]
-    use_vstack: Option<bool>,
-
-    #[arg(short, long, action)]
-    emit_llvm: Option<bool>,
-
-    #[arg(short, long, action)]
-    assert: Option<bool>,
-}
+const FLAG_LOG_LEVEL: &str = "log-level";
+const FLAG_EMIT_LLVM: &str = "emit-llvm";
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -50,97 +20,117 @@ enum Error {
     Clap(#[from] clap::Error),
     Build(#[from] jet::builder::Error),
     Engine(#[from] jet::engine::Error),
-}
+    SetLoggerError(#[from] SetLoggerError),
 
-fn build_cmd(args: BuildArgs) -> Result<(), Error> {
-    let build_opts = jet::builder::env::Options::new(
-        args.mode.unwrap_or(jet::builder::env::Mode::Debug),
-        args.use_vstack.unwrap_or(false),
-        args.emit_llvm.unwrap_or(true),
-        args.assert.unwrap_or(true),
-    );
+    #[error("unknown command: {0}")]
+    UnknownCommand(String),
 
-    let alice_rom = [
-        Instruction::PUSH1.opcode(), // Output len
-        0x0A,
-        Instruction::PUSH1.opcode(), // Output offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Input len
-        0x00,
-        Instruction::PUSH1.opcode(), // Input offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Value
-        0x00,
-        Instruction::PUSH2.opcode(), // Address
-        0x00,
-        0x01,
-        Instruction::PUSH1.opcode(), // Gas
-        0x00,
-        Instruction::CALL.opcode(), // Mem: 0x00FF
-        Instruction::RETURNDATASIZE.opcode(),
-        Instruction::PUSH1.opcode(), // Len
-        0x02,
-        Instruction::PUSH1.opcode(), // Src offset
-        0x00,
-        Instruction::PUSH1.opcode(), // Dest offset
-        0x02,
-        Instruction::RETURNDATACOPY.opcode(), // Mem: 0x00FF00FF0000000000000000
-    ];
-
-    let bob_rom = [
-        Instruction::PUSH1.opcode(),
-        0xFF,
-        Instruction::PUSH1.opcode(),
-        0x01,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF
-        Instruction::PUSH1.opcode(),
-        0xFF,
-        Instruction::PUSH1.opcode(),
-        0x0A,
-        Instruction::MSTORE.opcode(), // Mem: 0x00FF0000000000000000FF
-        Instruction::PUSH1.opcode(),
-        0x0A,
-        Instruction::PUSH1.opcode(),
-        0x00,
-        Instruction::RETURN.opcode(), // Return 0x00FF0000000000000000
-    ];
-
-    // Create the LLVM JIT engine
-    let context = Context::create();
-    let mut engine = jet::engine::Engine::new(&context, build_opts)?;
-
-    // Build the contract
-    engine.build_contract("0x1234", alice_rom.as_slice())?;
-    engine.build_contract("0x0001", bob_rom.as_slice())?;
-
-    // Run the contract with a test block
-    let block_info = new_test_block_info();
-    let run = engine.run_contract("0x1234", &block_info)?;
-    info!("{}", run);
-
-    Ok(())
-}
-
-#[derive(Subcommand, Debug, Clone)]
-enum Commands {
-    Build(BuildArgs),
+    #[error("unknown contract: {0}")]
+    UnknownContract(String),
 }
 
 fn main() -> Result<(), Error> {
-    let cli = Cli::parse();
+    let matches = Command::new("Jet Debugger")
+        .version("1.0")
+        .author("Tyler Smith <mail@tcry.pt")
+        .about("Debug tool for Jet")
+        .subcommand_required(true)
+        .subcommand(Command::new("list-contracts").about("List available contracts"))
+        .subcommand(
+            Command::new("run")
+                .arg(
+                    Arg::new(FLAG_LOG_LEVEL)
+                        .long(FLAG_LOG_LEVEL)
+                        .short('l')
+                        .help("Sets the log level")
+                        .default_value("error"),
+                )
+                .arg(
+                    Arg::new(FLAG_EMIT_LLVM)
+                        .long(FLAG_EMIT_LLVM)
+                        .help("Emits LLVM IR to stdout")
+                        .action(ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("contract")
+                        .short('c')
+                        .long("contract")
+                        .help("Contract set name")
+                        .action(ArgAction::Append),
+                )
+                .arg(
+                    Arg::new("address")
+                        .short('a')
+                        .long("address")
+                        .default_value("0x0000")
+                        .help("Contract address to execute"),
+                )
+                .arg(
+                    Arg::new("list-contracts")
+                        .long("list-contracts")
+                        .help("List available contracts"),
+                ),
+        )
+        .get_matches();
 
+    match matches.subcommand() {
+        Some(("list-contracts", _)) => list_contracts(),
+        Some(("run", matches)) => run(matches),
+        _ => Err(Error::UnknownCommand("empty".to_string())),
+    }
+}
+
+fn list_contracts() -> Result<(), Error> {
+    println!("Contract sets:");
+    contracts::Registry.iter().for_each(|(name, contracts)| {
+        println!("  {}\t{} contracts", name, contracts.len());
+    });
+    Ok(())
+}
+
+fn run(matches: &clap::ArgMatches) -> Result<(), Error> {
     // Configure logger
-    let logger = match cli.log_level {
-        Some(level) => SimpleLogger::new().with_level(level),
+    let logger = match matches.get_one::<String>(FLAG_LOG_LEVEL) {
+        Some(level) => SimpleLogger::new().with_level(level.parse().unwrap()),
         None => SimpleLogger::new().with_level(log::LevelFilter::Trace),
     };
-    logger.init().unwrap();
+    logger.init()?;
 
-    // Dispatch command
-    match cli.cmd {
-        Some(Commands::Build(args)) => build_cmd(args),
-        None => build_cmd(BuildArgs::default()),
-    }?;
+    // Create build options
+    let build_opts = env::Options::new(
+        env::Mode::Debug,
+        false,
+        matches.get_flag(FLAG_EMIT_LLVM),
+        true,
+    );
+
+    // Parse or load each contract into bytecode. If any are invalid return an error. If none are
+    // given use a default.
+    let bytecodes: Vec<BytecodeList> = matches
+        .get_many::<String>("contract")
+        .unwrap()
+        .map(|c| parse_contract_string(c))
+        .collect::<Result<_, Error>>()?;
+    let bytecodes = if bytecodes.is_empty() {
+        contracts::Registry.get("call").unwrap().clone()
+    } else {
+        bytecodes.into_iter().flatten().collect::<BytecodeList>()
+    };
+
+    // Set up the engine and add the contracts
+    let context = Context::create();
+    let mut engine = Engine::new(&context, build_opts)?;
+    bytecodes.iter().enumerate().for_each(|(i, bytecode)| {
+        let address = format!("0x{:04X}", i);
+        engine.build_contract(&address, bytecode).unwrap();
+    });
+
+    // Run the contract
+    let block_info = new_test_block_info();
+    let address = matches.get_one::<String>("address").unwrap();
+    println!("Executing contract {}", address);
+    let run = engine.run_contract(address, &block_info)?;
+    println!("Contract execution finished\n{}", run);
 
     Ok(())
 }
@@ -151,7 +141,7 @@ fn new_test_block_info() -> exec::BlockInfo {
         25, 26, 27, 28, 29, 30, 31,
     ];
     let hash_history = new_test_block_info_hash_history();
-    let coinbase = [1, 0];
+    let coinbase = [0, 1];
 
     exec::BlockInfo::new(
         42,
@@ -179,4 +169,25 @@ fn new_test_block_info_hash_history() -> exec::HashHistory {
         });
 
     hash_history
+}
+
+fn parse_contract_string(contract: &String) -> Result<BytecodeList, Error> {
+    // First see if it's a hex string
+    if let Ok(bytecodes) = parse_hex_string(contract) {
+        return Ok(vec![bytecodes]);
+    }
+
+    // Then check the registry
+    if let Some(bytecodes) = contracts::Registry.get(contract.as_str()) {
+        return Ok(bytecodes.clone());
+    }
+
+    Err(Error::UnknownContract(contract.clone()))
+}
+
+fn parse_hex_string(contract: &str) -> Result<Vec<u8>, hex::FromHexError> {
+    if contract.starts_with("0x") {
+        return hex::decode(&contract[2..]);
+    }
+    hex::decode(contract)
 }

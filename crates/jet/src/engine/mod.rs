@@ -99,7 +99,9 @@ impl<'ctx> Engine<'ctx> {
         addr: &str,
     ) -> Result<JitFunction<ContractFunc>, FunctionLookupError> {
         let name = exec::mangle_contract_fn(addr);
-        info!("Looking up contract function {}", name);
-        unsafe { ee.get_function(name.as_str()) }
+        trace!("Looking up contract function {}", name);
+        let func = unsafe { ee.get_function(name.as_str()) }?;
+        trace!("Found contract function {}", name);
+        Ok(func)
     }
 }
