@@ -130,6 +130,15 @@ impl Context {
         &self.stack[idx]
     }
 
+    pub(crate) fn stack_peek_mut(&mut self) -> &mut Word {
+        // TODO: Handle bounds by making this function return a second value
+        // if peek_idx >= ctx.stack_ptr {
+        //     return std::ptr::null();
+        // }
+        let idx = (self.stack_ptr - 1) as usize;
+        &mut self.stack[idx]
+    }
+
     /// Swaps the top word of the stack with the word at the given index.
     /// Returns false if the given index is out of bounds, true otherwise.
     pub(crate) fn stack_swap(&mut self, swap_idx: u32) -> bool {

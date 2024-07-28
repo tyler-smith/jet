@@ -209,16 +209,19 @@ pub unsafe extern "C" fn jet_contract_call_return_data_copy(
 //  Utils
 //
 
-pub extern "C" fn jet_ops_keccak256(buffer: &mut [u8; 32]) -> u8 {
+pub extern "C" fn jet_ops_keccak256(ctx: &mut Context) -> u8 {
+    // Get pointer to top of the stack
+    let word = ctx.stack_peek_mut();
+
     // Hash the bytes
     use sha3::{Digest, Keccak256};
     let mut hasher = Keccak256::new();
-    hasher.update(*buffer);
+    hasher.update(*word);
     let hash = hasher.finalize();
 
     // Write the hash back to the buffer
     for i in 0..32 {
-        buffer[i] = hash[i];
+        word[i] = hash[i];
     }
     0
 }

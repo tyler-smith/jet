@@ -608,17 +608,12 @@ pub(crate) fn sar(bctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
 }
 
 pub(crate) fn keccak256(ctx: &BuildCtx<'_, '_>) -> Result<(), Error> {
-    let data_ptr = __stack_pop_1(ctx)?;
-
     // TODO: Check return code
     ctx.builder.build_call(
         ctx.env.symbol_table.keccak256,
-        &[data_ptr.into()],
+        &[ctx.registers.exec_ctx.into()],
         "keccak256",
     )?;
-
-    // TODO: We could instead simply increase the stack ptr
-    __call_stack_push_ptr(ctx, data_ptr)?;
     Ok(())
 }
 
