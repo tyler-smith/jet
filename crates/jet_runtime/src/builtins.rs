@@ -144,10 +144,6 @@ pub unsafe extern "C" fn jet_contract_call(
     let caller_ctx = unsafe { ctx.as_mut() }.unwrap();
     let callee_ctx = caller_ctx.init_sub_call();
 
-    // let callee_ctx = caller_ctx.sub_ctx_mut().unwrap();
-    // let callee_ctx_ptr = callee_ctx as *mut Context;
-    // caller_ctx.set_sub_call(callee_ctx_ptr as usize);
-
     // Execute the contract function
     let contract_func: ContractFunc = unsafe { std::mem::transmute(fn_ptr) };
     let result = unsafe { contract_func(callee_ctx) };
