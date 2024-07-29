@@ -70,19 +70,20 @@ pub unsafe extern "C" fn stack_swap(ctx: *mut Context, swap_idx: u8) -> bool {
 ///
 ///  This function is unsafe because it dereferences the given pointers. The caller must ensure that
 ///  all the pointers are valid.
-pub unsafe extern "C" fn mem_store(ctx: *mut Context, loc: *const u32, val: *const Word) -> i8 {
+pub unsafe extern "C" fn mem_store(ctx: *mut Context, offset: *const u32, val: *const Word) -> i8 {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
-    let loc = unsafe { *loc };
+    let offset = unsafe { *offset };
     let word_ref = unsafe { &*val };
 
-    let end_loc = loc.saturating_add(WORD_SIZE_BYTES);
+    let end = offset.saturating_add(WORD_SIZE_BYTES);
     // TODO: Handle this after we correctly handle memory_len
     // if end_loc > ctx.memory_len {
     //     return -1; // Out of bounds
     // }
-    let start = loc as usize;
-    let end = end_loc as usize;
-    ctx.memory[start..end].copy_from_slice(word_ref);
+
+    let offset = offset as usize;
+    let end = end as usize;
+    ctx.memory[offset..end].copy_from_slice(word_ref);
     0
 }
 

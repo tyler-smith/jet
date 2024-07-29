@@ -8,6 +8,7 @@ pub use builder::Builder;
 use crate::instructions::Instruction;
 
 pub mod builder;
+mod builtins;
 pub mod contract;
 pub mod env;
 pub mod ops;

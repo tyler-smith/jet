@@ -326,14 +326,14 @@ fn build_contract_body<'ctx, 'b>(
             Some(next_block) => {
                 // Sync the vstack with the real stack
                 // Terminator instructions will handle the stack themselves
-                ops::__sync_vstack(bctx)?;
+                ops::sync_vstack(bctx)?;
 
                 bctx.builder
                     .build_unconditional_branch(next_block.basic_block)
                     .unwrap();
                 Ok(())
             }
-            None => ops::__build_return(bctx, ReturnCode::ImplicitReturn),
+            None => ops::build_return(bctx, ReturnCode::ImplicitReturn),
         }?;
     }
 
@@ -445,7 +445,6 @@ fn build_code_block(
                     Instruction::RETURN => ops::_return(bctx),
                     Instruction::REVERT => ops::revert(bctx),
                     Instruction::INVALID => ops::invalid(bctx),
-                    Instruction::SELFDESTRUCT => ops::selfdestruct(bctx),
 
                     // Stack manipulation
                     Instruction::DUP1 => ops::dup(bctx, 1),
@@ -593,6 +592,10 @@ fn build_code_block(
                     }
                     Instruction::STATICCALL => {
                         Err(Error::UnimplementedInstruction(Instruction::STATICCALL))
+                    }
+
+                    Instruction::SELFDESTRUCT => {
+                        Err(Error::UnimplementedInstruction(Instruction::SELFDESTRUCT))
                     }
 
                     // We should handle all of these before here
