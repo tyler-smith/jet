@@ -111,32 +111,37 @@ impl Context {
     }
 
     /// Pops a word from the stack and decrements the stack pointer.
-    pub(crate) fn stack_pop(&mut self) -> &Word {
-        // TODO: Handle bounds by making this function return a second value
-        // if ctx.stack_ptr == 0 {
-        //     return std::ptr::null();
-        // }
-        self.stack_ptr -= 1;
-        &self.stack[self.stack_ptr as usize]
+    /// Returns None if the stack is empty.
+    pub(crate) fn stack_pop(&mut self) -> Option<&Word> {
+        match self.stack_ptr {
+            0 => None,
+            _ => {
+                self.stack_ptr -= 1;
+                Some(&self.stack[self.stack_ptr as usize])
+            }
+        }
     }
 
     /// Peeks at a word in the stack without changing the stack pointer.
-    pub(crate) fn stack_peek(&self, peek_idx: u32) -> &Word {
-        // TODO: Handle bounds by making this function return a second value
-        // if peek_idx >= ctx.stack_ptr {
-        //     return std::ptr::null();
-        // }
-        let idx = (self.stack_ptr - peek_idx - 1) as usize;
-        &self.stack[idx]
+    /// Returns None if the stack is empty.
+    pub(crate) fn stack_peek(&self, peek_idx: u32) -> Option<&Word> {
+        match self.stack_ptr {
+            0 => None,
+            _ => {
+                let idx = (self.stack_ptr - peek_idx - 1) as usize;
+                Some(&self.stack[idx])
+            }
+        }
     }
 
-    pub(crate) fn stack_peek_mut(&mut self) -> &mut Word {
-        // TODO: Handle bounds by making this function return a second value
-        // if peek_idx >= ctx.stack_ptr {
-        //     return std::ptr::null();
-        // }
-        let idx = (self.stack_ptr - 1) as usize;
-        &mut self.stack[idx]
+    /// Peeks at the top word in the stack without changing the stack pointer.
+    /// Returns a mutable reference to the word so it can be changed in-place.
+    /// Returns None if the stack is empty.
+    pub(crate) fn stack_peek_mut(&mut self) -> Option<&mut Word> {
+        match self.stack_ptr {
+            0 => None,
+            _ => Some(&mut self.stack[(self.stack_ptr - 1) as usize]),
+        }
     }
 
     /// Swaps the top word of the stack with the word at the given index.

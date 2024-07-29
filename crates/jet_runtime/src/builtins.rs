@@ -29,7 +29,12 @@ pub unsafe extern "C" fn stack_push_ptr(ctx: *mut Context, word_ptr: *const Word
 ///  the pointer is valid.
 pub unsafe extern "C" fn stack_pop(ctx: *mut Context) -> *const Word {
     let ctx = unsafe { ctx.as_mut() }.unwrap();
-    ctx.stack_pop() as *const Word
+
+    // TODO: Return an indicator to the caller of the stack underflow
+    match ctx.stack_pop() {
+        Some(word) => word as *const Word,
+        None => std::ptr::null(),
+    }
 }
 
 ///  Peeks at a word in the stack.
@@ -38,9 +43,14 @@ pub unsafe extern "C" fn stack_pop(ctx: *mut Context) -> *const Word {
 ///
 ///  This function is unsafe because it dereferences the given pointer. The caller must ensure that
 ///  the pointer is valid.
-pub unsafe extern "C" fn stack_peek(ctx: *const Context, peek_idx: u8) -> *const Word {
-    let ctx = unsafe { ctx.as_ref() }.unwrap();
-    ctx.stack_peek(peek_idx as u32) as *const Word
+pub unsafe extern "C" fn stack_peek(ctx: *mut Context, peek_idx: u8) -> *const Word {
+    let ctx = unsafe { ctx.as_mut() }.unwrap();
+
+    // TODO: Return an indicator to the caller of the stack underflow
+    match ctx.stack_peek(peek_idx as u32) {
+        Some(word) => word as *const Word,
+        None => std::ptr::null(),
+    }
 }
 
 ///  Swaps two words in the stack.
@@ -211,7 +221,10 @@ pub unsafe extern "C" fn jet_contract_call_return_data_copy(
 
 pub extern "C" fn jet_ops_keccak256(ctx: &mut Context) -> u8 {
     // Get pointer to top of the stack
-    let word = ctx.stack_peek_mut();
+    let word = match ctx.stack_peek_mut() {
+        Some(word) => word,
+        None => return 1, // Stack underflow
+    };
 
     // Hash the bytes
     use sha3::{Digest, Keccak256};
