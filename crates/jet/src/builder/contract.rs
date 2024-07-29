@@ -351,9 +351,9 @@ fn build_code_block(
     jump_block: Option<BasicBlock>,
     following_block: Option<&&CodeBlock>,
 ) -> Result<(), Error> {
-    trace!("loop: Building code");
-    trace!("loop: Offset: {}", code_block.offset);
-    trace!("loop: ROM: {:?}", code_block.rom);
+    trace!("build loop: Building code");
+    trace!("build loop: Offset: {}", code_block.offset);
+    trace!("build loop: ROM: {:?}", code_block.rom);
 
     // Prepare for building the IR for this code block. Move the builder to this basic block
     // and start a relative PC at 0.
@@ -362,11 +362,11 @@ fn build_code_block(
     for item in instructions::Iterator::new(code_block.rom) {
         match item {
             IteratorItem::PushData(_, data) => {
-                trace!("loop: Data: {:?}", data);
+                trace!("build loop: Data: {:?}", data);
                 ops::push(bctx, data)
             }
             IteratorItem::Instr(pc, instr) => {
-                trace!("loop: Instruction: {:?}", instr);
+                trace!("build loop: Instruction: {:?}", instr);
                 match instr {
                     Instruction::STOP => ops::stop(bctx),
 
@@ -482,163 +482,90 @@ fn build_code_block(
                     Instruction::SWAP16 => ops::swap(bctx, 16),
 
                     // Not yet implemented
-                    Instruction::ADDRESS => {
-                        Err(Error::UnimplementedInstruction(Instruction::ADDRESS))
-                    }
-                    Instruction::BALANCE => {
-                        Err(Error::UnimplementedInstruction(Instruction::BALANCE))
-                    }
-                    Instruction::ORIGIN => {
-                        Err(Error::UnimplementedInstruction(Instruction::ORIGIN))
-                    }
-                    Instruction::CALLER => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLER))
-                    }
-                    Instruction::CALLVALUE => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLVALUE))
-                    }
-                    Instruction::CALLDATALOAD => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLDATALOAD))
-                    }
-                    Instruction::CALLDATASIZE => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLDATASIZE))
-                    }
-                    Instruction::CALLDATACOPY => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLDATACOPY))
-                    }
-                    Instruction::CODESIZE => {
-                        Err(Error::UnimplementedInstruction(Instruction::CODESIZE))
-                    }
-                    Instruction::CODECOPY => {
-                        Err(Error::UnimplementedInstruction(Instruction::CODECOPY))
-                    }
-                    Instruction::GASPRICE => {
-                        Err(Error::UnimplementedInstruction(Instruction::GASPRICE))
-                    }
-                    Instruction::EXTCODESIZE => {
-                        Err(Error::UnimplementedInstruction(Instruction::EXTCODESIZE))
-                    }
-                    Instruction::EXTCODECOPY => {
-                        Err(Error::UnimplementedInstruction(Instruction::EXTCODECOPY))
-                    }
-                    Instruction::EXTCODEHASH => {
-                        Err(Error::UnimplementedInstruction(Instruction::EXTCODEHASH))
-                    }
-
-                    Instruction::COINBASE => {
-                        Err(Error::UnimplementedInstruction(Instruction::COINBASE))
-                    }
-                    Instruction::TIMESTAMP => {
-                        Err(Error::UnimplementedInstruction(Instruction::TIMESTAMP))
-                    }
-                    Instruction::NUMBER => {
-                        Err(Error::UnimplementedInstruction(Instruction::NUMBER))
-                    }
-                    Instruction::DIFFICULTY => {
-                        Err(Error::UnimplementedInstruction(Instruction::DIFFICULTY))
-                    }
-                    Instruction::GASLIMIT => {
-                        Err(Error::UnimplementedInstruction(Instruction::GASLIMIT))
-                    }
-                    Instruction::CHAINID => {
-                        Err(Error::UnimplementedInstruction(Instruction::CHAINID))
-                    }
-                    Instruction::SELFBALANCE => {
-                        Err(Error::UnimplementedInstruction(Instruction::SELFBALANCE))
-                    }
-                    Instruction::BASEFEE => {
-                        Err(Error::UnimplementedInstruction(Instruction::BASEFEE))
-                    }
-                    Instruction::BLOBHASH => {
-                        Err(Error::UnimplementedInstruction(Instruction::BLOBHASH))
-                    }
-                    Instruction::BLOBBASEFEE => {
-                        Err(Error::UnimplementedInstruction(Instruction::BLOBBASEFEE))
-                    }
-
-                    Instruction::SLOAD => Err(Error::UnimplementedInstruction(Instruction::SLOAD)),
-                    Instruction::SSTORE => {
-                        Err(Error::UnimplementedInstruction(Instruction::SSTORE))
-                    }
-
-                    Instruction::MSIZE => Err(Error::UnimplementedInstruction(Instruction::MSIZE)),
-                    Instruction::GAS => Err(Error::UnimplementedInstruction(Instruction::GAS)),
-
-                    Instruction::TLOAD => Err(Error::UnimplementedInstruction(Instruction::TLOAD)),
-                    Instruction::TSTORE => {
-                        Err(Error::UnimplementedInstruction(Instruction::TSTORE))
-                    }
-
-                    Instruction::MCOPY => Err(Error::UnimplementedInstruction(Instruction::MCOPY)),
-
-                    Instruction::LOG0 => Err(Error::UnimplementedInstruction(Instruction::LOG0)),
-                    Instruction::LOG1 => Err(Error::UnimplementedInstruction(Instruction::LOG1)),
-                    Instruction::LOG2 => Err(Error::UnimplementedInstruction(Instruction::LOG2)),
-                    Instruction::LOG3 => Err(Error::UnimplementedInstruction(Instruction::LOG3)),
-                    Instruction::LOG4 => Err(Error::UnimplementedInstruction(Instruction::LOG4)),
-
-                    Instruction::CREATE => {
-                        Err(Error::UnimplementedInstruction(Instruction::CREATE))
-                    }
-                    Instruction::CREATE2 => {
-                        Err(Error::UnimplementedInstruction(Instruction::CREATE2))
-                    }
-
-                    Instruction::CALLCODE => {
-                        Err(Error::UnimplementedInstruction(Instruction::CALLCODE))
-                    }
-                    Instruction::DELEGATECALL => {
-                        Err(Error::UnimplementedInstruction(Instruction::DELEGATECALL))
-                    }
-                    Instruction::STATICCALL => {
-                        Err(Error::UnimplementedInstruction(Instruction::STATICCALL))
-                    }
-
-                    Instruction::SELFDESTRUCT => {
-                        Err(Error::UnimplementedInstruction(Instruction::SELFDESTRUCT))
+                    Instruction::ADDRESS
+                    | Instruction::BALANCE
+                    | Instruction::ORIGIN
+                    | Instruction::CALLER
+                    | Instruction::CALLVALUE
+                    | Instruction::CALLDATALOAD
+                    | Instruction::CALLDATASIZE
+                    | Instruction::CALLDATACOPY
+                    | Instruction::CODESIZE
+                    | Instruction::CODECOPY
+                    | Instruction::GASPRICE
+                    | Instruction::EXTCODESIZE
+                    | Instruction::EXTCODECOPY
+                    | Instruction::EXTCODEHASH
+                    | Instruction::COINBASE
+                    | Instruction::TIMESTAMP
+                    | Instruction::NUMBER
+                    | Instruction::DIFFICULTY
+                    | Instruction::GASLIMIT
+                    | Instruction::CHAINID
+                    | Instruction::SELFBALANCE
+                    | Instruction::BASEFEE
+                    | Instruction::BLOBHASH
+                    | Instruction::BLOBBASEFEE
+                    | Instruction::SLOAD
+                    | Instruction::SSTORE
+                    | Instruction::MSIZE
+                    | Instruction::GAS
+                    | Instruction::TLOAD
+                    | Instruction::TSTORE
+                    | Instruction::MCOPY
+                    | Instruction::LOG0
+                    | Instruction::LOG1
+                    | Instruction::LOG2
+                    | Instruction::LOG3
+                    | Instruction::LOG4
+                    | Instruction::CREATE
+                    | Instruction::CREATE2
+                    | Instruction::CALLCODE
+                    | Instruction::DELEGATECALL
+                    | Instruction::STATICCALL
+                    | Instruction::SELFDESTRUCT => {
+                        return Err(Error::UnimplementedInstruction(instr))
                     }
 
                     // We should handle all of these before here
-                    Instruction::JUMPDEST => {
-                        Err(Error::UnexpectedInstruction(Instruction::JUMPDEST))
-                    }
-                    Instruction::PUSH0 => Err(Error::UnexpectedInstruction(Instruction::PUSH0)),
-                    Instruction::PUSH1 => Err(Error::UnexpectedInstruction(Instruction::PUSH1)),
-                    Instruction::PUSH2 => Err(Error::UnexpectedInstruction(Instruction::PUSH2)),
-                    Instruction::PUSH3 => Err(Error::UnexpectedInstruction(Instruction::PUSH3)),
-                    Instruction::PUSH4 => Err(Error::UnexpectedInstruction(Instruction::PUSH4)),
-                    Instruction::PUSH5 => Err(Error::UnexpectedInstruction(Instruction::PUSH5)),
-                    Instruction::PUSH6 => Err(Error::UnexpectedInstruction(Instruction::PUSH6)),
-                    Instruction::PUSH7 => Err(Error::UnexpectedInstruction(Instruction::PUSH7)),
-                    Instruction::PUSH8 => Err(Error::UnexpectedInstruction(Instruction::PUSH8)),
-                    Instruction::PUSH9 => Err(Error::UnexpectedInstruction(Instruction::PUSH9)),
-                    Instruction::PUSH10 => Err(Error::UnexpectedInstruction(Instruction::PUSH10)),
-                    Instruction::PUSH11 => Err(Error::UnexpectedInstruction(Instruction::PUSH11)),
-                    Instruction::PUSH12 => Err(Error::UnexpectedInstruction(Instruction::PUSH12)),
-                    Instruction::PUSH13 => Err(Error::UnexpectedInstruction(Instruction::PUSH13)),
-                    Instruction::PUSH14 => Err(Error::UnexpectedInstruction(Instruction::PUSH14)),
-                    Instruction::PUSH15 => Err(Error::UnexpectedInstruction(Instruction::PUSH15)),
-                    Instruction::PUSH16 => Err(Error::UnexpectedInstruction(Instruction::PUSH16)),
-                    Instruction::PUSH17 => Err(Error::UnexpectedInstruction(Instruction::PUSH17)),
-                    Instruction::PUSH18 => Err(Error::UnexpectedInstruction(Instruction::PUSH18)),
-                    Instruction::PUSH19 => Err(Error::UnexpectedInstruction(Instruction::PUSH19)),
-                    Instruction::PUSH20 => Err(Error::UnexpectedInstruction(Instruction::PUSH20)),
-                    Instruction::PUSH21 => Err(Error::UnexpectedInstruction(Instruction::PUSH21)),
-                    Instruction::PUSH22 => Err(Error::UnexpectedInstruction(Instruction::PUSH22)),
-                    Instruction::PUSH23 => Err(Error::UnexpectedInstruction(Instruction::PUSH23)),
-                    Instruction::PUSH24 => Err(Error::UnexpectedInstruction(Instruction::PUSH24)),
-                    Instruction::PUSH25 => Err(Error::UnexpectedInstruction(Instruction::PUSH25)),
-                    Instruction::PUSH26 => Err(Error::UnexpectedInstruction(Instruction::PUSH26)),
-                    Instruction::PUSH27 => Err(Error::UnexpectedInstruction(Instruction::PUSH27)),
-                    Instruction::PUSH28 => Err(Error::UnexpectedInstruction(Instruction::PUSH28)),
-                    Instruction::PUSH29 => Err(Error::UnexpectedInstruction(Instruction::PUSH29)),
-                    Instruction::PUSH30 => Err(Error::UnexpectedInstruction(Instruction::PUSH30)),
-                    Instruction::PUSH31 => Err(Error::UnexpectedInstruction(Instruction::PUSH31)),
-                    Instruction::PUSH32 => Err(Error::UnexpectedInstruction(Instruction::PUSH32)),
+                    Instruction::JUMPDEST
+                    | Instruction::PUSH0
+                    | Instruction::PUSH1
+                    | Instruction::PUSH2
+                    | Instruction::PUSH3
+                    | Instruction::PUSH4
+                    | Instruction::PUSH5
+                    | Instruction::PUSH6
+                    | Instruction::PUSH7
+                    | Instruction::PUSH8
+                    | Instruction::PUSH9
+                    | Instruction::PUSH10
+                    | Instruction::PUSH11
+                    | Instruction::PUSH12
+                    | Instruction::PUSH13
+                    | Instruction::PUSH14
+                    | Instruction::PUSH15
+                    | Instruction::PUSH16
+                    | Instruction::PUSH17
+                    | Instruction::PUSH18
+                    | Instruction::PUSH19
+                    | Instruction::PUSH20
+                    | Instruction::PUSH21
+                    | Instruction::PUSH22
+                    | Instruction::PUSH23
+                    | Instruction::PUSH24
+                    | Instruction::PUSH25
+                    | Instruction::PUSH26
+                    | Instruction::PUSH27
+                    | Instruction::PUSH28
+                    | Instruction::PUSH29
+                    | Instruction::PUSH30
+                    | Instruction::PUSH31
+                    | Instruction::PUSH32 => Err(Error::UnexpectedInstruction(instr)),
                 }
             }
             IteratorItem::Invalid(_) => {
-                trace!("loop: Invalid");
+                trace!("build loop: Invalid");
                 return Err(Error::UnknownInstruction(0));
             }
         }?
